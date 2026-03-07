@@ -1,0 +1,1 @@
+study_id,study_label,treatment,comparator,outcome,outcome_type,n_treatment,n_control,mean_treatment,sd_treatment,mean_control,sd_control,events_treatment,events_control,yi,vi,se,reporting_type,diagnostic_criteria,pem_status,followup_weeks,notes

@@ -1,0 +1,142 @@
+---
+title: "Methods"
+---
+
+## Search Strategy
+
+### Databases
+
+- **Europe PMC** (includes PubMed/MEDLINE, PMC, and preprints)
+
+### Search Queries
+
+We maintain separate search queries for each review domain. All queries are defined in [`R/search.R`](R/search.R) and logged in [`data/search-log.csv`](data/search-log.csv).
+
+```{r}
+#| label: show-queries
+source("R/search.R")
+for (nm in names(search_queries)) {
+  cat(sprintf("**%s**\n\n```\n%s\n```\n\n", nm, search_queries[[nm]]))
+}
+```
+
+### Search Schedule
+
+Searches run automatically via GitHub Actions every Monday. New results are appended to the study database with the date of retrieval.
+
+## Inclusion Criteria
+
+### Population
+
+- Adults or children with:
+  - Post-COVID condition / Long COVID (WHO definition or equivalent)
+  - ME/CFS (any recognised criteria: CCC, Fukuda, IOM/SEID, ICC)
+  - Post-viral fatigue syndromes with documented PEM
+
+### Study Types
+
+We include both **clinical studies** and **patient-reported outcome studies**, analysed in separate categories:
+
+**Clinical studies:**
+
+- Randomised controlled trials (RCTs)
+- Non-randomised controlled trials
+- Prospective cohort studies
+- Cross-sectional studies with defined sampling
+
+**Patient-reported studies:**
+
+- Patient surveys with structured outcomes
+- Registry-based studies
+- Qualitative studies with systematic methods (for narrative synthesis only)
+
+### Outcomes
+
+Domain-specific outcomes are defined per review topic:
+
+| Domain | Primary Outcomes | Secondary Outcomes |
+|--------|------------------|--------------------|
+| Treatment | Fatigue severity, physical function, quality of life | Adverse events, PEM frequency, work capacity |
+| Prevalence | Point prevalence, period prevalence | Incidence, prevalence by subgroup |
+| PEM Prevalence | PEM prevalence in LC/ME/CFS | PEM severity, trigger patterns |
+| Recovery | Recovery rate, time to recovery | QoL trajectory, symptom burden over time |
+
+### Exclusion Criteria
+
+- Case reports and case series (n < 10)
+- Studies without original data (narrative reviews, editorials, commentaries)
+- Studies on acute COVID-19 only (no post-acute follow-up)
+- Animal studies
+- Non-English and non-Scandinavian language publications (unless key study)
+
+## Study Quality Assessment
+
+### Risk of Bias
+
+- **RCTs**: Cochrane Risk of Bias 2 (RoB 2)
+- **Non-randomised studies**: ROBINS-I
+- **Prevalence studies**: Joanna Briggs Institute (JBI) checklist
+- **Patient surveys**: Adapted Newcastle-Ottawa Scale
+
+### GRADE Assessment
+
+Evidence certainty is rated using the GRADE framework:
+
+- **HIGH**: Further research is very unlikely to change confidence in the effect estimate
+- **MODERATE**: Further research is likely to have an important impact
+- **LOW**: Further research is very likely to have an important impact
+- **VERY LOW**: The effect estimate is very uncertain
+
+GRADE ratings are applied per outcome within each comparison, considering:
+
+1. Risk of bias
+2. Inconsistency
+3. Indirectness
+4. Imprecision
+5. Publication bias
+
+## Data Extraction
+
+Extracted data are stored in CSV files under [`data/extracted/`](data/extracted/):
+
+- `treatment_effects.csv` — effect sizes for treatment comparisons
+- `prevalence_estimates.csv` — prevalence point estimates
+- `pem_prevalence.csv` — PEM-specific prevalence data
+- `recovery_outcomes.csv` — recovery rates and trajectories
+- `quality_ratings.csv` — risk of bias and GRADE assessments
+
+Each file includes the `study_id` linking back to the master database in [`data/studies.csv`](data/studies.csv).
+
+## Statistical Methods
+
+### Meta-Analysis
+
+All meta-analyses use the `metafor` R package [@viechtbauer2010metafor].
+
+- **Treatment effects**: Random-effects models (REML estimator). Effect sizes standardised as Hedges' *g* for continuous outcomes or odds ratios for binary outcomes.
+- **Prevalence**: Random-effects logit-transformed proportions with Freeman-Tukey double arcsine back-transformation.
+- **Heterogeneity**: Assessed via $I^2$, $\tau^2$, and Cochran's Q. Prediction intervals reported alongside confidence intervals.
+
+### Subgroup Analyses
+
+Pre-specified subgroup analyses:
+
+- Clinical vs patient-reported studies
+- ME/CFS diagnostic criteria used (CCC vs Fukuda vs other)
+- PEM status (with PEM vs without PEM vs not assessed)
+- Study design (RCT vs observational)
+
+### Sensitivity Analyses
+
+- Leave-one-out analysis
+- Influence diagnostics
+- Trim-and-fill for publication bias assessment
+
+## Reporting
+
+This review follows the PRISMA 2020 guidelines for systematic reviews, adapted for living reviews per the Living Systematic Review Network recommendations.
+
+## References {.unnumbered}
+
+::: {#refs}
+:::

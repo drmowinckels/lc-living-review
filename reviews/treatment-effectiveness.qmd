@@ -1,0 +1,157 @@
+---
+title: "Treatment Effectiveness"
+---
+
+```{r}
+#| label: setup
+#| include: false
+source("../R/utils.R")
+source("../R/meta-analysis.R")
+source("../R/plots.R")
+
+studies <- read_study_database()
+effects <- read_extracted_data("treatment_effectiveness")
+quality <- read_quality_ratings()
+has_data <- nrow(effects) > 0
+```
+
+## Overview
+
+This review examines the comparative effectiveness of interventions for Long COVID and ME/CFS, including:
+
+- **Pacing / energy management** vs usual care or other active interventions
+- **Graded exercise therapy (GET)** vs usual care or pacing
+- **Cognitive behavioural therapy (CBT)** vs usual care
+- **Pharmacological interventions** (LDN, antihistamines, beta-blockers, etc.)
+- **Supplements** (CoQ10, NAD+, etc.)
+
+Clinical and patient-reported outcome studies are analysed separately.
+
+```{r}
+#| label: included-studies
+#| eval: !expr has_data
+treatment_studies <- studies[studies$search_topic == "treatment_effectiveness" & studies$included, ]
+cat(sprintf("**%d studies included** in treatment effectiveness review.\n", nrow(treatment_studies)))
+```
+
+## Clinical Studies {#sec-clinical}
+
+```{r}
+#| label: forest-clinical
+#| eval: !expr has_data
+#| fig-cap: "Forest plot of treatment effects from clinical studies (Hedges' g)"
+clinical <- effects[effects$reporting_type == "clinical", ]
+if (nrow(clinical) >= 2) {
+  es <- compute_effect_sizes(clinical, outcome_type = "continuous")
+  fit <- run_meta(es)
+  forest_gg(fit, title = "Treatment Effects — Clinical Studies")
+}
+```
+
+```{r}
+#| label: heterogeneity-clinical
+#| eval: !expr has_data
+if (nrow(clinical) >= 2) {
+  het <- heterogeneity_summary(fit)
+  cat(sprintf(
+    "**Heterogeneity**: Q(%d) = %.1f, p = %.3f; I² = %.1f%%; τ² = %.3f\n",
+    het$Q_df, het$Q, het$Q_p, het$I2, het$tau2
+  ))
+}
+```
+
+### Subgroup: By PEM Status
+
+```{r}
+#| label: subgroup-pem-clinical
+#| eval: !expr has_data
+#| fig-cap: "Treatment effects stratified by PEM status"
+if (nrow(clinical) >= 2 && any(!is.na(clinical$pem_status))) {
+  fit_sub <- run_subgroup_meta(es, moderator = "pem_status")
+  cat(sprintf("Test of moderators: F = %.2f, p = %.3f\n", fit_sub$QM, fit_sub$QMp))
+}
+```
+
+## Patient-Reported Studies {#sec-patient-reported}
+
+```{r}
+#| label: forest-patient
+#| eval: !expr has_data
+#| fig-cap: "Forest plot of treatment effects from patient-reported studies"
+patient <- effects[effects$reporting_type == "patient_reported", ]
+if (nrow(patient) >= 2) {
+  es_pat <- compute_effect_sizes(patient, outcome_type = "continuous")
+  fit_pat <- run_meta(es_pat)
+  forest_gg(fit_pat, title = "Treatment Effects — Patient-Reported Studies")
+}
+```
+
+## Lay Summary {#sec-lay}
+
+```{r}
+#| label: lay-summary
+#| eval: !expr has_data
+#| fig-cap: "What patients and clinicians report about treatments"
+cat("*This section provides accessible visualisations for non-specialist audiences.*\n\n")
+```
+
+## Study Quality {#sec-quality}
+
+```{r}
+#| label: rob-plot
+#| eval: !expr nrow(quality) > 0
+#| fig-cap: "Risk of bias assessment for included treatment studies"
+treatment_quality <- quality[quality$comparison != "", ]
+if (nrow(treatment_quality) > 0) {
+  rob_traffic_light(treatment_quality)
+}
+```
+
+```{r}
+#| label: grade-plot
+#| eval: !expr nrow(quality) > 0
+#| fig-cap: "GRADE evidence certainty ratings"
+if (nrow(treatment_quality) > 0 && any(!is.na(treatment_quality$grade))) {
+  grade_heatmap(treatment_quality)
+}
+```
+
+## Publication Bias {#sec-pub-bias}
+
+```{r}
+#| label: funnel-plot
+#| eval: !expr has_data
+#| fig-cap: "Funnel plot for treatment effectiveness studies"
+if (exists("fit") && fit$k >= 5) {
+  funnel_gg(fit)
+}
+```
+
+## Sensitivity Analysis {#sec-sensitivity}
+
+```{r}
+#| label: leave-one-out
+#| eval: !expr has_data
+if (exists("fit") && fit$k >= 3) {
+  l1o <- leave_one_out(fit)
+  print(l1o)
+}
+```
+
+::: {.callout-note}
+## Data Status
+
+```{r}
+#| label: data-status
+if (!has_data) {
+  cat("No extracted treatment data yet. Run the search and extraction pipeline to populate this review.\n")
+} else {
+  cat(sprintf(
+    "%d effect sizes from %d studies. Last updated: %s\n",
+    nrow(effects),
+    length(unique(effects$study_id)),
+    max(studies$date_added[studies$search_topic == "treatment_effectiveness"], na.rm = TRUE)
+  ))
+}
+```
+:::

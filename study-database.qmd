@@ -1,0 +1,106 @@
+---
+title: "Study Database"
+---
+
+```{r}
+#| label: setup
+#| include: false
+source("R/utils.R")
+studies <- read_study_database()
+has_data <- nrow(studies) > 0
+```
+
+## All Studies
+
+Interactive table of all studies in the database, with filtering and search.
+
+```{r}
+#| label: study-table
+#| eval: !expr has_data
+if (has_data) {
+  display <- studies[, c(
+    "study_id", "year", "title", "journal",
+    "search_topic", "included", "human_verified",
+    "study_type", "reporting_type", "data_extracted", "date_added"
+  )]
+
+  DT::datatable(
+    display,
+    filter = "top",
+    options = list(
+      pageLength = 25,
+      scrollX = TRUE,
+      order = list(list(10, "desc"))
+    ),
+    rownames = FALSE
+  )
+} else {
+  cat("*No studies in database yet.*\n")
+}
+```
+
+## PRISMA Flow
+
+```{r}
+#| label: prisma-flow
+#| eval: !expr has_data
+if (has_data) {
+  n_identified <- nrow(studies)
+  n_screened <- sum(studies$llm_relevant | studies$human_verified, na.rm = TRUE)
+  n_excluded_screen <- n_identified - n_screened
+  n_assessed <- sum(studies$human_verified, na.rm = TRUE)
+  n_included <- sum(studies$included, na.rm = TRUE)
+  n_excluded_full <- n_assessed - n_included
+  n_extracted <- sum(studies$data_extracted, na.rm = TRUE)
+}
+```
+
+```{mermaid}
+%%| eval: !expr has_data
+flowchart TD
+    A[Studies identified\nthrough search] --> B[LLM screening]
+    B --> C[Potentially relevant]
+    B --> D[Excluded at screening]
+    C --> E[Human full-text review]
+    E --> F[Included in review]
+    E --> G[Excluded at full-text]
+    F --> H[Data extracted]
+```
+
+## Search Log
+
+```{r}
+#| label: search-log
+log_path <- "data/search-log.csv"
+if (file.exists(log_path)) {
+  log <- read.csv(log_path, stringsAsFactors = FALSE)
+  if (nrow(log) > 0) {
+    DT::datatable(
+      log[, c("date", "topic", "n_results")],
+      options = list(pageLength = 20, order = list(list(0, "desc"))),
+      rownames = FALSE
+    )
+  } else {
+    cat("*No searches logged yet.*\n")
+  }
+} else {
+  cat("*No search log found.*\n")
+}
+```
+
+## Database Schema
+
+The study database tracks each study through the pipeline:
+
+| Field | Description |
+|-------|-------------|
+| `study_id` | Unique identifier (first_author + year) |
+| `pmid`, `doi` | PubMed ID and DOI |
+| `date_added` | Date study entered the database |
+| `llm_relevant` | Initial LLM relevance screening result |
+| `llm_category` | LLM-assigned review domain |
+| `human_verified` | Whether a human has reviewed the study |
+| `included` | Final inclusion decision |
+| `reporting_type` | Clinical or patient-reported |
+| `pem_assessed` | Whether PEM was assessed in the study |
+| `data_extracted` | Whether outcome data has been extracted |

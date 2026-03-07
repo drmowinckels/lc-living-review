@@ -1,0 +1,53 @@
+project:
+  type: website
+  output-dir: _site
+
+website:
+  title: "Living Review: Long COVID & ME/CFS"
+  description: "A living systematic review and meta-analysis of Long COVID and ME/CFS research"
+  navbar:
+    left:
+      - text: Home
+        href: index.qmd
+      - text: Methods
+        href: methods.qmd
+      - text: Reviews
+        menu:
+          - text: Treatment Effectiveness
+            href: reviews/treatment-effectiveness.qmd
+          - text: Prevalence
+            href: reviews/prevalence.qmd
+          - text: PEM Prevalence
+            href: reviews/pem-prevalence.qmd
+          - text: Recovery Trajectories
+            href: reviews/recovery-trajectories.qmd
+      - text: Study Database
+        href: study-database.qmd
+    right:
+      - icon: github
+        href: https://github.com/drmowinckels/living-review-lc-mecfs
+  page-footer:
+    center: "Living Review — Last updated {{< meta date >}}"
+
+  search: true
+
+format:
+  html:
+    theme: cosmo
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    code-fold: true
+    code-tools: true
+    fig-width: 10
+    fig-height: 6
+    fig-dpi: 300
+
+bibliography: references.bib
+csl: apa.csl
+date: last-modified
+
+execute:
+  freeze: auto
+  warning: false
+  message: false

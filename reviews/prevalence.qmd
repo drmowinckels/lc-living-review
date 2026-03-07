@@ -1,0 +1,92 @@
+---
+title: "Prevalence"
+---
+
+```{r}
+#| label: setup
+#| include: false
+source("../R/utils.R")
+source("../R/meta-analysis.R")
+source("../R/plots.R")
+
+studies <- read_study_database()
+prev_data <- read_extracted_data("prevalence")
+has_data <- nrow(prev_data) > 0
+```
+
+## Overview
+
+Pooled prevalence estimates for Long COVID and ME/CFS symptoms from population-based and clinical studies.
+
+## Long COVID Symptom Prevalence
+
+```{r}
+#| label: lc-prevalence
+#| eval: !expr has_data
+#| fig-cap: "Pooled prevalence of Long COVID symptoms"
+lc <- prev_data[prev_data$condition == "long_covid", ]
+
+if (nrow(lc) >= 2) {
+  symptoms <- unique(lc$symptom)
+
+  for (sym in symptoms) {
+    sym_data <- lc[lc$symptom == sym, ]
+    if (nrow(sym_data) >= 2) {
+      fit <- run_prevalence_meta(sym_data)
+      bt <- fit$back_transform(coef(fit), fit$ci.lb, fit$ci.ub)
+      cat(sprintf(
+        "\n### %s\n\nPooled prevalence: **%.1f%%** (95%% CI: %.1f%%–%.1f%%)\n\n",
+        sym, bt$prevalence * 100, bt$ci_lower * 100, bt$ci_upper * 100
+      ))
+    }
+  }
+}
+```
+
+## ME/CFS Symptom Prevalence
+
+```{r}
+#| label: mecfs-prevalence
+#| eval: !expr has_data
+#| fig-cap: "Pooled prevalence of ME/CFS symptoms"
+mecfs <- prev_data[prev_data$condition == "mecfs", ]
+if (nrow(mecfs) >= 2) {
+  fit_mecfs <- run_prevalence_meta(mecfs)
+  prevalence_plot(mecfs, title = "ME/CFS Symptom Prevalence")
+}
+```
+
+## By Timepoint
+
+```{r}
+#| label: prevalence-time
+#| eval: !expr has_data
+#| fig-cap: "Symptom prevalence by months post-infection"
+if (has_data && any(!is.na(prev_data$timepoint_months))) {
+  cat("*Prevalence estimates over time will appear here once sufficient data is extracted.*\n")
+}
+```
+
+## Lay Summary {#sec-lay}
+
+```{r}
+#| label: lay-prevalence
+#| eval: !expr has_data
+cat("*Accessible prevalence visualisations for non-specialist audiences.*\n")
+```
+
+::: {.callout-note}
+## Data Status
+
+```{r}
+#| label: data-status
+if (!has_data) {
+  cat("No extracted prevalence data yet. Run the search and extraction pipeline to populate this review.\n")
+} else {
+  cat(sprintf(
+    "%d estimates from %d studies.\n",
+    nrow(prev_data), length(unique(prev_data$study_id))
+  ))
+}
+```
+:::

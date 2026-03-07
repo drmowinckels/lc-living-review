@@ -1,0 +1,143 @@
+---
+title: "Recovery Trajectories"
+---
+
+```{r}
+#| label: setup
+#| include: false
+source("../R/utils.R")
+source("../R/meta-analysis.R")
+source("../R/plots.R")
+
+studies <- read_study_database()
+recovery <- read_extracted_data("recovery_trajectories")
+has_data <- nrow(recovery) > 0
+```
+
+## Overview
+
+Recovery from Long COVID and ME/CFS is variable, often non-linear, and strongly modulated by the presence of post-exertional malaise (PEM). This section synthesises longitudinal recovery data, stratified by PEM status where available.
+
+## Recovery Rates
+
+### Overall
+
+```{r}
+#| label: recovery-overall
+#| eval: !expr has_data
+if (has_data) {
+  overall <- recovery[!is.na(recovery$recovery_pct), ]
+  if (nrow(overall) >= 2) {
+    fit <- run_prevalence_meta(
+      overall,
+      xi_col = "recovery_n",
+      ni_col = "n"
+    )
+    bt <- fit$back_transform(coef(fit), fit$ci.lb, fit$ci.ub)
+    cat(sprintf(
+      "Pooled recovery rate: **%.1f%%** (95%% CI: %.1f%%–%.1f%%)\n",
+      bt$prevalence * 100, bt$ci_lower * 100, bt$ci_upper * 100
+    ))
+  }
+}
+```
+
+### By PEM Status
+
+```{r}
+#| label: recovery-pem
+#| eval: !expr has_data
+#| fig-cap: "Recovery rates with and without PEM"
+if (has_data && any(!is.na(recovery$pem_status))) {
+  pem_recovery <- recovery[!is.na(recovery$pem_status), ]
+
+  for (status in unique(pem_recovery$pem_status)) {
+    sub <- pem_recovery[pem_recovery$pem_status == status, ]
+    if (nrow(sub) >= 2) {
+      fit_sub <- run_prevalence_meta(sub, xi_col = "recovery_n", ni_col = "n")
+      bt <- fit_sub$back_transform(coef(fit_sub), fit_sub$ci.lb, fit_sub$ci.ub)
+      cat(sprintf(
+        "\n**%s**: %.1f%% (95%% CI: %.1f%%–%.1f%%)\n",
+        status, bt$prevalence * 100, bt$ci_lower * 100, bt$ci_upper * 100
+      ))
+    }
+  }
+}
+```
+
+## Recovery Over Time
+
+```{r}
+#| label: recovery-trajectory
+#| eval: !expr has_data
+#| fig-cap: "Recovery trajectory by timepoint and PEM status"
+if (has_data && any(!is.na(recovery$timepoint_months))) {
+  trajectory <- recovery[!is.na(recovery$timepoint_months) & !is.na(recovery$recovery_pct), ]
+
+  if (nrow(trajectory) >= 3) {
+    ggplot(trajectory, aes(
+      x = timepoint_months,
+      y = recovery_pct / 100,
+      colour = pem_status
+    )) +
+      geom_point(aes(size = n), alpha = 0.7) +
+      geom_smooth(method = "loess", se = TRUE, alpha = 0.2) +
+      scale_y_continuous(labels = scales::percent_format()) +
+      scale_colour_manual(values = cols_review, name = "PEM Status") +
+      labs(
+        title = "Recovery Trajectories Over Time",
+        x = "Months post-infection",
+        y = "Recovery rate",
+        size = "Sample size"
+      ) +
+      theme_review
+  }
+}
+```
+
+## Quality of Life Trajectories
+
+```{r}
+#| label: qol-trajectory
+#| eval: !expr has_data
+#| fig-cap: "Quality of life over time by PEM status"
+if (has_data && any(!is.na(recovery$qol_score))) {
+  qol <- recovery[!is.na(recovery$qol_score), ]
+  if (nrow(qol) >= 3) {
+    ggplot(qol, aes(x = timepoint_months, y = qol_score, colour = pem_status)) +
+      geom_point(aes(size = n), alpha = 0.7) +
+      geom_smooth(method = "loess", se = TRUE, alpha = 0.2) +
+      scale_colour_manual(values = cols_review, name = "PEM Status") +
+      labs(
+        title = "Quality of Life Over Time",
+        x = "Months post-infection",
+        y = "QoL Score"
+      ) +
+      theme_review
+  }
+}
+```
+
+## Lay Summary {#sec-lay}
+
+```{r}
+#| label: lay-recovery
+#| eval: !expr has_data
+cat("*Accessible recovery trajectory visualisations for non-specialist audiences.*\n")
+```
+
+::: {.callout-note}
+## Data Status
+
+```{r}
+#| label: data-status
+if (!has_data) {
+  cat("No extracted recovery data yet.\n")
+} else {
+  cat(sprintf(
+    "%d datapoints from %d studies.\n",
+    nrow(recovery), length(unique(recovery$study_id))
+  ))
+}
+```
+:::

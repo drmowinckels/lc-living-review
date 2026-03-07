@@ -1,0 +1,10 @@
+_site/
+_freeze/
+.quarto/
+*.html
+!_site/**/*.html
+*_files/
+.Rproj.user
+.Rhistory
+.RData
+.DS_Store

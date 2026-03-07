@@ -1,0 +1,103 @@
+---
+title: "PEM Prevalence"
+---
+
+```{r}
+#| label: setup
+#| include: false
+source("../R/utils.R")
+source("../R/meta-analysis.R")
+source("../R/plots.R")
+
+studies <- read_study_database()
+pem_data <- read_extracted_data("pem_prevalence")
+has_data <- nrow(pem_data) > 0
+```
+
+## Overview
+
+Post-exertional malaise (PEM) is the cardinal symptom distinguishing ME/CFS and a significant subset of Long COVID from other fatigue conditions. This section pools PEM prevalence estimates across studies and examines variation by population, assessment method, and diagnostic criteria.
+
+## Pooled PEM Prevalence
+
+### In Long COVID
+
+```{r}
+#| label: pem-lc
+#| eval: !expr has_data
+#| fig-cap: "PEM prevalence in Long COVID populations"
+pem_lc <- pem_data[pem_data$condition == "long_covid", ]
+if (nrow(pem_lc) >= 2) {
+  fit <- run_prevalence_meta(pem_lc)
+  bt <- fit$back_transform(coef(fit), fit$ci.lb, fit$ci.ub)
+  cat(sprintf(
+    "Pooled PEM prevalence in Long COVID: **%.1f%%** (95%% CI: %.1f%%–%.1f%%)\n\n",
+    bt$prevalence * 100, bt$ci_lower * 100, bt$ci_upper * 100
+  ))
+  prevalence_plot(pem_lc, title = "PEM Prevalence in Long COVID")
+}
+```
+
+### In ME/CFS
+
+```{r}
+#| label: pem-mecfs
+#| eval: !expr has_data
+#| fig-cap: "PEM prevalence in ME/CFS populations"
+pem_mecfs <- pem_data[pem_data$condition == "mecfs", ]
+if (nrow(pem_mecfs) >= 2) {
+  fit_mecfs <- run_prevalence_meta(pem_mecfs)
+  prevalence_plot(pem_mecfs, title = "PEM Prevalence in ME/CFS")
+}
+```
+
+## By Assessment Method
+
+```{r}
+#| label: pem-by-method
+#| eval: !expr has_data
+#| fig-cap: "PEM prevalence by assessment method"
+if (has_data && any(!is.na(pem_data$assessment_method))) {
+  methods <- unique(pem_data$assessment_method[!is.na(pem_data$assessment_method)])
+  for (m in methods) {
+    m_data <- pem_data[pem_data$assessment_method == m, ]
+    if (nrow(m_data) >= 2) {
+      cat(sprintf("\n### %s\n\n", m))
+      fit_m <- run_prevalence_meta(m_data)
+      bt <- fit_m$back_transform(coef(fit_m), fit_m$ci.lb, fit_m$ci.ub)
+      cat(sprintf("Prevalence: %.1f%% (%.1f%%–%.1f%%)\n\n", bt$prevalence * 100, bt$ci_lower * 100, bt$ci_upper * 100))
+    }
+  }
+}
+```
+
+## By Diagnostic Criteria
+
+```{r}
+#| label: pem-by-criteria
+#| eval: !expr has_data
+if (has_data && any(!is.na(pem_data$diagnostic_criteria))) {
+  cat("*Subgroup analysis by diagnostic criteria stringency will appear once data is sufficient.*\n")
+}
+```
+
+## Lay Summary {#sec-lay}
+
+```{r}
+#| label: lay-pem
+#| eval: !expr has_data
+cat("*How common is PEM? Visual summary for non-specialist audiences.*\n")
+```
+
+::: {.callout-note}
+## Data Status
+
+```{r}
+#| label: data-status
+if (!has_data) {
+  cat("No extracted PEM prevalence data yet.\n")
+} else {
+  cat(sprintf("%d estimates from %d studies.\n", nrow(pem_data), length(unique(pem_data$study_id))))
+}
+```
+:::

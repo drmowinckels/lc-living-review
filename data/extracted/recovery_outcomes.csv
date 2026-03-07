@@ -1,0 +1,1 @@
+study_id,study_label,condition,population,pem_status,timepoint_months,n,recovery_n,recovery_pct,ci_lower,ci_upper,recovery_definition,qol_measure,qol_score,qol_ci_lower,qol_ci_upper,reporting_type,diagnostic_criteria,country,notes
