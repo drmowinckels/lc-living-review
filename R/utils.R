@@ -330,6 +330,114 @@ read_grade_data <- function() {
   as.data.frame(arrow::read_parquet(path))
 }
 
+compute_review_priority <- function(
+  db = read_study_database(),
+  extraction_log = NULL,
+  fulltext_dir = here::here("data/fulltext"),
+  manual_csv = here::here("data/manual/fulltext-needed.csv")
+) {
+  rel <- db[!is.na(db$llm_relevant) & db$llm_relevant, ]
+  if (nrow(rel) == 0) return(data.frame())
+
+  cached_ft <- tools::file_path_sans_ext(
+    list.files(fulltext_dir, pattern = "[.]rds$")
+  )
+
+  if (is.null(extraction_log)) {
+    log_path <- here::here("data/extraction-log.csv")
+    extraction_log <- if (file.exists(log_path)) {
+      read.csv(log_path, stringsAsFactors = FALSE)
+    } else {
+      data.frame(study_id = character(), consensus = logical(),
+                 n_agreeing = integer(), had_supplement = logical())
+    }
+  }
+
+  manual_needed <- if (file.exists(manual_csv)) {
+    read.csv(manual_csv, stringsAsFactors = FALSE)
+  } else {
+    data.frame(study_id = character(), reason = character(),
+               manual_download_status = character())
+  }
+
+  is_proto <- if ("is_protocol" %in% names(rel)) rel$is_protocol else rep(FALSE, nrow(rel))
+  has_ft <- rel$study_id %in% cached_ft
+  needs_manual_ft <- rel$study_id %in% manual_needed$study_id[
+    manual_needed$manual_download_status == "pending"
+  ]
+
+  log_match <- match(rel$study_id, extraction_log$study_id)
+  had_consensus <- ifelse(is.na(log_match), NA,
+                          extraction_log$consensus[log_match])
+  n_agreeing <- ifelse(is.na(log_match), NA_integer_,
+                       extraction_log$n_agreeing[log_match])
+  had_supplement <- ifelse(is.na(log_match), FALSE,
+                           extraction_log$had_supplement[log_match])
+
+  extraction_na_pct <- rep(NA_real_, nrow(rel))
+  for (d in c("treatment_cbt_psych", "treatment_biomedical",
+              "outcomes", "biomarkers", "systematic_reviews")) {
+    path <- here::here("data/extracted", paste0(d, ".parquet"))
+    if (!file.exists(path)) next
+    .check_arrow()
+    df <- as.data.frame(arrow::read_parquet(path))
+    num_cols <- names(df)[vapply(df, is.numeric, logical(1))]
+    if (length(num_cols) == 0) next
+    by_study <- aggregate(
+      pct_na ~ study_id,
+      data.frame(
+        study_id = df$study_id,
+        pct_na = rowSums(is.na(df[, num_cols, drop = FALSE])) / length(num_cols)
+      ),
+      mean
+    )
+    idx <- match(by_study$study_id, rel$study_id)
+    extraction_na_pct[idx[!is.na(idx)]] <- by_study$pct_na[!is.na(idx)]
+  }
+
+  is_rct <- grepl("RCT|random", rel$llm_study_type %||% "", ignore.case = TRUE) &
+    !is_proto
+  is_review <- grepl("systematic|meta", rel$llm_study_type %||% "", ignore.case = TRUE)
+
+  score <- rep(0, nrow(rel))
+  score <- score + ifelse(needs_manual_ft, 30, 0)
+  score <- score + ifelse(!has_ft & !needs_manual_ft & !is_proto, 15, 0)
+  score <- score + ifelse(!is.na(extraction_na_pct), extraction_na_pct * 40, 0)
+  score <- score + ifelse(is.na(had_consensus) | !had_consensus, 10, 0)
+  score <- score + ifelse(!had_supplement & has_ft, 5, 0)
+  score <- score + ifelse(is_rct, 20, ifelse(is_review, 10, 0))
+  score <- score - ifelse(is_proto, 50, 0)
+  score <- score - ifelse(rel$human_verified %in% TRUE, 15, 0)
+
+  action <- ifelse(is_proto, "protocol (low priority)",
+    ifelse(needs_manual_ft, "needs manual full-text download",
+    ifelse(!has_ft, "needs full-text fetch (automated failed)",
+    ifelse(!is.na(extraction_na_pct) & extraction_na_pct > 0.6,
+           "needs extraction review (high % missing)",
+    ifelse(is.na(had_consensus) | !had_consensus,
+           "needs extraction verification",
+    ifelse(!rel$human_verified %in% TRUE,
+           "needs human screening verification",
+    "low priority"))))))
+
+  data.frame(
+    study_id = rel$study_id,
+    title = rel$title,
+    study_type = rel$llm_study_type,
+    search_topic = rel$search_topic,
+    is_protocol = is_proto,
+    has_fulltext = has_ft,
+    needs_manual_ft = needs_manual_ft,
+    extraction_na_pct = round(extraction_na_pct, 2),
+    had_consensus = had_consensus %in% TRUE,
+    had_supplement = had_supplement,
+    human_verified = rel$human_verified %in% TRUE,
+    priority_score = round(score, 1),
+    action = action,
+    stringsAsFactors = FALSE
+  ) |> (\(x) x[order(-x$priority_score), ])()
+}
+
 display_table <- function(df, caption = NULL) {
   df[] <- lapply(df, function(col) {
     if (is.character(col)) {
