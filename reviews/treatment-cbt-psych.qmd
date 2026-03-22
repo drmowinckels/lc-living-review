@@ -31,8 +31,11 @@ topic_studies <- studies |>
     !is.na(llm_relevant), llm_relevant
   )
 if (nrow(topic_studies) > 0) {
-  n_rct <- sum(grepl("RCT|random", topic_studies$llm_study_type %||% "", ignore.case = TRUE), na.rm = TRUE)
-  cli::cat_line(glue::glue("**{nrow(topic_studies)} relevant studies** ({n_rct} RCTs) identified."))
+  n_proto <- if ("is_protocol" %in% names(topic_studies)) sum(topic_studies$is_protocol, na.rm = TRUE) else 0L
+  n_results <- nrow(topic_studies) - n_proto
+  n_rct <- sum(grepl("RCT|random", topic_studies$llm_study_type %||% "", ignore.case = TRUE) &
+    !topic_studies$is_protocol, na.rm = TRUE)
+  cli::cat_line(glue::glue("**{n_results} studies with results** ({n_rct} RCTs), plus {n_proto} registered protocols."))
 }
 ```
 

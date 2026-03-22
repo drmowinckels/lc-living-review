@@ -96,17 +96,25 @@ Studies are classified into review categories based on LLM screening. A single s
 source(here::here("R/utils.R"))
 db <- read_study_database()
 
+has_proto <- "is_protocol" %in% names(db)
+
 topic_summary <- db |>
   dplyr::group_by(search_topic) |>
   dplyr::summarise(
     n_added     = dplyr::n(),
     n_screened  = sum(!is.na(llm_relevant)),
     n_relevant  = sum(llm_relevant, na.rm = TRUE),
+    n_protocols = if (has_proto) sum(llm_relevant & is_protocol, na.rm = TRUE) else NA_integer_,
     n_extracted = sum(data_extracted, na.rm = TRUE),
     .groups = "drop"
   ) |>
   dplyr::arrange(search_topic)
 
-names(topic_summary) <- c("Topic", "Added", "Screened", "Relevant", "Extracted")
+if (has_proto) {
+  names(topic_summary) <- c("Topic", "Added", "Screened", "Relevant", "Protocols", "Extracted")
+} else {
+  topic_summary$n_protocols <- NULL
+  names(topic_summary) <- c("Topic", "Added", "Screened", "Relevant", "Extracted")
+}
 display_table(topic_summary)
 ```
