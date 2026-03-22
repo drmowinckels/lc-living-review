@@ -1388,13 +1388,18 @@ fetch_supplement_files <- function(pmid) {
   paste(collected_text, collapse = "\n\n")
 }
 
-fetch_study_content <- function(pmid) {
-  if (is.na(pmid) || pmid == "") {
-    return(NULL)
+fetch_study_content <- function(pmid, doi = NA) {
+  sections <- NULL
+  supplements <- NULL
+
+  if (!is.na(pmid) && pmid != "") {
+    sections <- fetch_fulltext_sections(pmid)
+    supplements <- fetch_supplement_files(pmid)
   }
 
-  sections <- fetch_fulltext_sections(pmid)
-  supplements <- fetch_supplement_files(pmid)
+  if (is.null(sections) && !is.na(doi) && doi != "") {
+    sections <- fetch_fulltext_via_doi(doi)
+  }
 
   if (is.null(sections) && is.null(supplements)) {
     return(NULL)
@@ -1404,8 +1409,170 @@ fetch_study_content <- function(pmid) {
     results = if (!is.null(sections)) sections$results,
     methods = if (!is.null(sections)) sections$methods,
     tables = if (!is.null(sections)) sections$tables,
-    supplements = supplements
+    supplements = supplements,
+    source = attr(sections, "source") %||% "pmc"
   )
+}
+
+.unpaywall_email <- "a.m.mowinckel@psykologi.uio.no"
+
+unpaywall_lookup <- function(doi, email = .unpaywall_email) {
+  url <- sprintf("https://api.unpaywall.org/v2/%s?email=%s", doi, email)
+  resp <- tryCatch(
+    httr2::request(url) |>
+      httr2::req_timeout(15) |>
+      httr2::req_error(is_error = \(r) FALSE) |>
+      httr2::req_perform(),
+    error = function(e) NULL
+  )
+  if (is.null(resp) || httr2::resp_status(resp) != 200) return(NULL)
+  jsonlite::fromJSON(httr2::resp_body_string(resp), simplifyVector = FALSE)
+}
+
+.publisher_xml_url <- function(doi) {
+  if (grepl("10\\.1371/", doi)) {
+    return(sprintf("https://journals.plos.org/plosone/article/file?id=%s&type=manuscript", doi))
+  }
+  NULL
+}
+
+.parse_publisher_xml <- function(xml_text) {
+  doc <- tryCatch(xml2::read_xml(xml_text), error = function(e) NULL)
+  if (is.null(doc)) return(NULL)
+
+  extract <- function(section_hints) {
+    for (hint in section_hints) {
+      nodes <- xml2::xml_find_all(doc, sprintf(
+        "//*[contains(translate(@sec-type,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), '%s')]",
+        hint
+      ))
+      if (length(nodes) == 0) {
+        nodes <- xml2::xml_find_all(doc, sprintf(
+          "//sec[title[contains(translate(., 'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'), '%s')]]",
+          hint
+        ))
+      }
+      if (length(nodes) > 0) {
+        return(paste(xml2::xml_text(nodes), collapse = "\n\n"))
+      }
+    }
+    NULL
+  }
+
+  results_text <- extract(c("result", "finding"))
+  methods_text <- extract(c("method", "material", "procedure"))
+  tables_text <- tryCatch({
+    tbls <- xml2::xml_find_all(doc, "//table-wrap")
+    if (length(tbls) > 0) paste(xml2::xml_text(tbls), collapse = "\n\n") else NULL
+  }, error = function(e) NULL)
+
+  if (is.null(results_text) && is.null(methods_text) && is.null(tables_text)) {
+    body <- xml2::xml_find_all(doc, "//body")
+    if (length(body) > 0) {
+      full <- xml2::xml_text(body[[1]])
+      if (nchar(full) > 500) {
+        results_text <- full
+      }
+    }
+  }
+
+  if (is.null(results_text) && is.null(methods_text) && is.null(tables_text)) {
+    return(NULL)
+  }
+
+  out <- list(results = results_text, methods = methods_text, tables = tables_text)
+  attr(out, "source") <- "publisher_xml"
+  out
+}
+
+.parse_pdf_text <- function(pdf_path) {
+  if (!requireNamespace("pdftools", quietly = TRUE)) {
+    cli::cli_alert_warning("Install pdftools for PDF text extraction")
+    return(NULL)
+  }
+  pages <- tryCatch(pdftools::pdf_text(pdf_path), error = function(e) NULL)
+  if (is.null(pages) || length(pages) == 0) return(NULL)
+
+  full <- paste(pages, collapse = "\n\n")
+  if (nchar(full) < 500) return(NULL)
+
+  find_section <- function(text, patterns) {
+    for (pat in patterns) {
+      match <- regexpr(
+        sprintf("(?i)\\n\\s*%s\\s*\\n", pat),
+        text, perl = TRUE
+      )
+      if (match > 0) {
+        start <- match + attr(match, "match.length")
+        rest <- substring(text, start)
+        end <- regexpr("(?i)\\n\\s*(discussion|conclusion|acknowledge|reference|funding|declaration)\\s*\\n",
+                        rest, perl = TRUE)
+        if (end > 0) rest <- substring(rest, 1, end - 1)
+        return(trimws(rest))
+      }
+    }
+    NULL
+  }
+
+  results_text <- find_section(full, c("results?", "findings?"))
+  methods_text <- find_section(full, c("methods?", "materials? and methods?", "study design"))
+
+  if (is.null(results_text) && is.null(methods_text)) {
+    results_text <- full
+  }
+
+  out <- list(results = results_text, methods = methods_text, tables = NULL)
+  attr(out, "source") <- "pdf"
+  out
+}
+
+fetch_fulltext_via_doi <- function(doi) {
+  pub_xml_url <- .publisher_xml_url(doi)
+  if (!is.null(pub_xml_url)) {
+    resp <- tryCatch(
+      httr2::request(pub_xml_url) |>
+        httr2::req_timeout(15) |>
+        httr2::req_error(is_error = \(r) FALSE) |>
+        httr2::req_perform(),
+      error = function(e) NULL
+    )
+    if (!is.null(resp) && httr2::resp_status(resp) == 200) {
+      ct <- httr2::resp_content_type(resp)
+      if (grepl("xml", ct, ignore.case = TRUE)) {
+        sections <- .parse_publisher_xml(httr2::resp_body_string(resp))
+        if (!is.null(sections)) {
+          cli::cli_alert_success("Got publisher XML for {.val {doi}}")
+          return(sections)
+        }
+      }
+    }
+  }
+
+  oa <- unpaywall_lookup(doi)
+  if (is.null(oa) || !isTRUE(oa$is_oa)) return(NULL)
+
+  pdf_url <- oa$best_oa_location$url_for_pdf
+  if (is.null(pdf_url)) {
+    for (loc in oa$oa_locations) {
+      if (!is.null(loc$url_for_pdf)) {
+        pdf_url <- loc$url_for_pdf
+        break
+      }
+    }
+  }
+  if (is.null(pdf_url)) return(NULL)
+
+  tmp <- tempfile(fileext = ".pdf")
+  on.exit(unlink(tmp), add = TRUE)
+  dl_ok <- tryCatch({
+    utils::download.file(pdf_url, tmp, quiet = TRUE, mode = "wb")
+    TRUE
+  }, error = function(e) FALSE)
+
+  if (!dl_ok || !file.exists(tmp) || file.size(tmp) < 1000) return(NULL)
+
+  cli::cli_alert_success("Got PDF for {.val {doi}}")
+  .parse_pdf_text(tmp)
 }
 
 .outcome_harmonization <- list(
@@ -1696,9 +1863,14 @@ log_extraction <- function(
 
   fulltext <- NULL
   had_fulltext <- FALSE
-  if (try_supplements && !is.na(studies$pmid[i]) && studies$pmid[i] != "") {
+  has_id <- (!is.na(studies$pmid[i]) && studies$pmid[i] != "") ||
+    (!is.na(studies$doi[i]) && studies$doi[i] != "")
+  if (try_supplements && has_id) {
     cli::cli_alert_info("Fetching full text, tables, and supplements...")
-    fulltext <- fetch_study_content(studies$pmid[i])
+    fulltext <- fetch_study_content(
+      pmid = studies$pmid[i] %||% NA,
+      doi = studies$doi[i] %||% NA
+    )
     had_fulltext <- !is.null(fulltext)
     if (had_fulltext) {
       parts <- c(

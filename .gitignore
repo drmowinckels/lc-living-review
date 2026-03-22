@@ -8,3 +8,7 @@ _freeze/
 .Rhistory
 .RData
 .DS_Store
+
+/.quarto/
+**/*.quarto_ipynb
+data/fulltext/
