@@ -31,6 +31,10 @@ cols_review <- c(
   no_pem = "#0072B2"
 )
 
+forest_height <- function(k) min(25, max(4, k * 0.35 + 2))
+
+bar_height <- function(k) min(20, max(4, k * 0.5 + 2))
+
 forest_gg <- function(fit,
                       xlab = "Effect Size (Hedges' g)",
                       title = NULL,
