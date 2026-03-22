@@ -1551,24 +1551,19 @@ fetch_fulltext_via_doi <- function(doi) {
   oa <- unpaywall_lookup(doi)
   if (is.null(oa) || !isTRUE(oa$is_oa)) return(NULL)
 
-  pdf_url <- oa$best_oa_location$url_for_pdf
-  if (is.null(pdf_url)) {
-    for (loc in oa$oa_locations) {
-      if (!is.null(loc$url_for_pdf)) {
-        pdf_url <- loc$url_for_pdf
-        break
-      }
-    }
-  }
-  if (is.null(pdf_url)) return(NULL)
+  pdf_urls <- Filter(Negate(is.null), lapply(oa$oa_locations, `[[`, "url_for_pdf"))
+  if (length(pdf_urls) == 0) return(NULL)
 
   tmp <- tempfile(fileext = ".pdf")
   on.exit(unlink(tmp), add = TRUE)
-  dl_ok <- tryCatch({
-    utils::download.file(pdf_url, tmp, quiet = TRUE, mode = "wb")
-    TRUE
-  }, error = function(e) FALSE)
-
+  dl_ok <- FALSE
+  for (pdf_url in pdf_urls) {
+    dl_ok <- tryCatch({
+      utils::download.file(pdf_url, tmp, quiet = TRUE, mode = "wb")
+      file.exists(tmp) && file.size(tmp) > 1000
+    }, error = function(e) FALSE, warning = function(w) FALSE)
+    if (dl_ok) break
+  }
   if (!dl_ok || !file.exists(tmp) || file.size(tmp) < 1000) return(NULL)
 
   cli::cli_alert_success("Got PDF for {.val {doi}}")
