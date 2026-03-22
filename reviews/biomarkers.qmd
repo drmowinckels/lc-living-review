@@ -1,0 +1,169 @@
+---
+title: "Biomarkers"
+aliases:
+  - /reviews/biomarkers/
+---
+
+```{r}
+#| label: setup
+#| include: false
+source(here::here("R/utils.R"))
+source(here::here("R/meta-analysis.R"))
+source(here::here("R/plots.R"))
+
+studies <- read_study_database()
+bm <- read_extracted_data("biomarkers")
+has_data <- nrow(bm) > 0
+```
+
+## Overview
+
+This review synthesises biomarker findings in Long COVID and ME/CFS, covering immune dysfunction, autoantibodies, neuroinflammation, microclots, endothelial dysfunction, metabolomics, and proteomics.
+
+```{r}
+#| label: included-studies
+#| results: asis
+topic_studies <- studies |>
+  dplyr::filter(
+    !is.na(search_topic), search_topic == "biomarkers",
+    !is.na(llm_relevant), llm_relevant
+  )
+if (nrow(topic_studies) > 0) {
+  cli::cat_line(glue::glue("**{nrow(topic_studies)} relevant studies** identified."))
+}
+```
+
+## Biomarker Types {#sec-types}
+
+```{r}
+#| label: type-summary
+#| eval: !expr has_data
+if (has_data && "biomarker_type" %in% names(bm)) {
+  type_counts <- bm |>
+    dplyr::filter(!is.na(biomarker_type)) |>
+    dplyr::count(biomarker_type, sort = TRUE)
+  if (nrow(type_counts) > 0) {
+    names(type_counts) <- c("Biomarker Type", "Findings")
+    display_table(type_counts)
+  }
+}
+```
+
+## Direction of Findings {#sec-direction}
+
+```{r}
+#| label: direction-data
+#| include: false
+dir_counts <- NULL
+dir_h <- 6
+if (has_data && all(c("biomarker_type", "finding_direction") %in% names(bm))) {
+  dir_df <- bm |>
+    dplyr::filter(!is.na(biomarker_type), !is.na(finding_direction))
+  if (nrow(dir_df) > 0) {
+    dir_counts <- dir_df |>
+      dplyr::count(Type = biomarker_type, Direction = finding_direction) |>
+      dplyr::filter(n > 0)
+    dir_h <- bar_height(dplyr::n_distinct(dir_counts$Type))
+  }
+}
+```
+
+```{r}
+#| label: direction-plot
+#| eval: !expr '!is.null(dir_counts)'
+#| fig-height: !expr dir_h
+#| fig-cap: "Direction of biomarker findings by type"
+library(ggplot2)
+ggplot(dir_counts, aes(x = reorder(Type, n), y = n, fill = Direction)) +
+  geom_col(position = "stack") +
+  coord_flip() +
+  scale_fill_manual(
+    values = c(elevated = "#D55E00", reduced = "#0072B2",
+               "no difference" = "#999999", mixed = "#E69F00"),
+    name = "Direction"
+  ) +
+  labs(x = NULL, y = "Number of findings") +
+  theme_review
+```
+
+## Condition Comparison {#sec-condition}
+
+```{r}
+#| label: condition-comparison
+#| eval: !expr has_data
+if (has_data && all(c("condition", "biomarker_name", "finding_direction") %in% names(bm))) {
+  both_conditions <- bm |> dplyr::filter(condition == "both")
+  if (nrow(both_conditions) > 0) {
+    cli::cat_line(glue::glue("**{nrow(both_conditions)}** findings reported for both Long COVID and ME/CFS simultaneously."))
+  }
+  cond_counts <- bm |>
+    dplyr::filter(!is.na(condition)) |>
+    dplyr::count(condition)
+  names(cond_counts) <- c("Condition", "Findings")
+  display_table(cond_counts)
+}
+```
+
+## Top Biomarkers {#sec-top}
+
+```{r}
+#| label: top-biomarkers
+#| eval: !expr has_data
+if (has_data && "biomarker_name" %in% names(bm)) {
+  top20 <- bm |>
+    dplyr::filter(!is.na(biomarker_name)) |>
+    dplyr::count(biomarker_name, sort = TRUE) |>
+    dplyr::slice_head(n = 20)
+  names(top20) <- c("Biomarker", "Studies")
+  display_table(top20)
+}
+```
+
+## Diagnostic Performance {#sec-diagnostic}
+
+```{r}
+#| label: diagnostic-table
+#| eval: !expr has_data
+if (has_data && all(c("sensitivity", "specificity") %in% names(bm))) {
+  diag_df <- bm |>
+    dplyr::filter(!is.na(sensitivity), !is.na(specificity))
+  if (nrow(diag_df) > 0) {
+    display <- diag_df |>
+      dplyr::select(dplyr::any_of(c("study_id", "biomarker_name", "condition",
+                                    "sensitivity", "specificity"))) |>
+      dplyr::mutate(dplyr::across(c(sensitivity, specificity), \(x) round(x, 3)))
+    names(display) <- gsub("_", " ", names(display)) |> tools::toTitleCase()
+    display_table(display)
+  } else {
+    cli::cat_line("No sensitivity/specificity data extracted yet.")
+  }
+}
+```
+
+## PEM & Biomarkers {#sec-pem}
+
+```{r}
+#| label: pem-biomarkers
+#| results: asis
+#| eval: !expr has_data
+if (has_data && "pem_assessed" %in% names(bm)) {
+  n_pem <- sum(bm$pem_assessed, na.rm = TRUE)
+  pct <- round(n_pem / nrow(bm) * 100)
+  cli::cat_line(glue::glue("PEM was assessed alongside biomarkers in **{n_pem}/{nrow(bm)}** ({pct}%) findings."))
+}
+```
+
+::: {.callout-note}
+## Data Status
+
+```{r}
+#| label: data-status
+#| results: asis
+if (!has_data) {
+  cli::cat_line("No extracted data yet. Run the extraction pipeline to populate this review.")
+} else {
+  n_studies <- dplyr::n_distinct(bm$study_id)
+  cli::cat_line(glue::glue("{nrow(bm)} biomarker findings from {n_studies} studies."))
+}
+```
+:::

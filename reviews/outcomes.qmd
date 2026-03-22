@@ -1,0 +1,205 @@
+---
+title: "Outcomes & Recovery"
+aliases:
+  - /reviews/outcomes/
+  - /reviews/recovery/
+---
+
+```{r}
+#| label: setup
+#| include: false
+source(here::here("R/utils.R"))
+source(here::here("R/meta-analysis.R"))
+source(here::here("R/plots.R"))
+
+studies <- read_study_database()
+outcomes <- read_extracted_data("outcomes")
+has_data <- nrow(outcomes) > 0
+```
+
+## Overview
+
+This review synthesises longitudinal outcome and recovery data for Long COVID and ME/CFS, covering fatigue, physical function, quality of life, PEM, and recovery rates. Studies are stratified by PEM status where available.
+
+```{r}
+#| label: included-studies
+#| results: asis
+topic_studies <- studies |>
+  dplyr::filter(
+    !is.na(search_topic), search_topic == "outcomes",
+    !is.na(llm_relevant), llm_relevant
+  )
+if (nrow(topic_studies) > 0) {
+  cli::cat_line(glue::glue("**{nrow(topic_studies)} relevant studies** identified."))
+}
+```
+
+## Outcome Domains {#sec-domains}
+
+```{r}
+#| label: domain-summary
+#| eval: !expr has_data
+if (has_data && "outcome_domain" %in% names(outcomes)) {
+  domain_counts <- outcomes |>
+    dplyr::filter(!is.na(outcome_domain)) |>
+    dplyr::count(outcome_domain, sort = TRUE)
+  if (nrow(domain_counts) > 0) {
+    names(domain_counts) <- c("Outcome Domain", "Findings")
+    display_table(domain_counts)
+  }
+}
+```
+
+## Recovery Rates {#sec-recovery}
+
+```{r}
+#| label: recovery-summary
+#| results: asis
+#| eval: !expr has_data
+if (has_data && all(c("recovery_n", "n_total") %in% names(outcomes))) {
+  rec_df <- outcomes |>
+    dplyr::filter(!is.na(recovery_n), !is.na(n_total)) |>
+    dplyr::mutate(recovery_pct = recovery_n / n_total * 100)
+  if (nrow(rec_df) > 0) {
+    mean_rec <- round(mean(rec_df$recovery_pct, na.rm = TRUE), 1)
+    cli::cat_line(glue::glue("Mean recovery rate across {nrow(rec_df)} datapoints: **{mean_rec}%**"))
+  }
+}
+```
+
+```{r}
+#| label: recovery-data
+#| include: false
+rec_plot_df <- NULL
+recovery_h <- 6
+n_recovery_total <- 0L
+if (has_data && all(c("recovery_n", "n_total") %in% names(outcomes))) {
+  rec_df <- outcomes |>
+    dplyr::filter(!is.na(recovery_n), !is.na(n_total)) |>
+    dplyr::mutate(
+      study_label = study_id,
+      prevalence = recovery_n / n_total,
+      ci_lower = prevalence - 1.96 * sqrt(prevalence * (1 - prevalence) / n_total),
+      ci_upper = prevalence + 1.96 * sqrt(prevalence * (1 - prevalence) / n_total)
+    )
+  n_recovery_total <- nrow(rec_df)
+  if (nrow(rec_df) > 50) {
+    rec_df <- rec_df |>
+      dplyr::arrange(prevalence) |>
+      dplyr::slice_head(n = 50)
+  }
+  if (nrow(rec_df) >= 2) {
+    rec_plot_df <- rec_df
+    recovery_h <- forest_height(nrow(rec_df))
+  }
+}
+```
+
+```{r}
+#| label: recovery-plot
+#| eval: !expr '!is.null(rec_plot_df)'
+#| fig-height: !expr recovery_h
+#| fig-cap: !expr 'if (n_recovery_total > 50) paste0("Recovery rates (50 lowest of ", n_recovery_total, " datapoints)") else "Reported recovery rates by study"'
+prevalence_plot(rec_plot_df, title = "Recovery Rates")
+```
+
+## Recovery Definitions {#sec-definitions}
+
+```{r}
+#| label: recovery-definitions
+#| eval: !expr has_data
+if (has_data && "recovery_definition" %in% names(outcomes)) {
+  def_counts <- outcomes |>
+    dplyr::filter(!is.na(recovery_definition), recovery_definition != "") |>
+    dplyr::count(recovery_definition, sort = TRUE)
+  if (nrow(def_counts) > 0) {
+    names(def_counts) <- c("Recovery Definition", "Studies")
+    display_table(def_counts)
+  }
+}
+```
+
+## Outcome Trajectories {#sec-trajectories}
+
+```{r}
+#| label: trajectory-data
+#| include: false
+traj_df <- NULL
+traj_h <- 6
+if (has_data && all(c("baseline_mean", "final_mean", "outcome_domain") %in% names(outcomes))) {
+  tmp <- outcomes |>
+    dplyr::filter(!is.na(baseline_mean), !is.na(final_mean), !is.na(outcome_domain)) |>
+    dplyr::mutate(change = final_mean - baseline_mean)
+  if (nrow(tmp) >= 2) {
+    traj_df <- tmp
+    traj_h <- bar_height(dplyr::n_distinct(traj_df$outcome_domain))
+  }
+}
+```
+
+```{r}
+#| label: trajectory-plot
+#| eval: !expr '!is.null(traj_df)'
+#| fig-height: !expr traj_h
+#| fig-cap: "Outcome trajectories over follow-up (baseline vs final mean)"
+library(ggplot2)
+ggplot(traj_df, aes(x = reorder(outcome_domain, change, FUN = median), y = change)) +
+  geom_hline(yintercept = 0, linetype = "dashed", colour = "grey50") +
+  geom_boxplot(fill = "#0072B2", alpha = 0.4, outlier.shape = 16) +
+  geom_jitter(width = 0.1, size = 2, alpha = 0.6, colour = "#0072B2") +
+  coord_flip() +
+  labs(
+    x = NULL,
+    y = "Change from baseline (final \u2212 baseline mean)",
+    title = "Outcome Changes by Domain"
+  ) +
+  theme_review
+```
+
+## PEM Prevalence {#sec-pem}
+
+```{r}
+#| label: pem-prevalence
+#| results: asis
+#| eval: !expr has_data
+if (has_data && "pem_prevalence" %in% names(outcomes)) {
+  pem_df <- outcomes |> dplyr::filter(!is.na(pem_prevalence))
+  if (nrow(pem_df) > 0) {
+    pooled_pem <- round(mean(pem_df$pem_prevalence, na.rm = TRUE) * 100, 1)
+    cli::cat_line(glue::glue(
+      "PEM prevalence reported in {nrow(pem_df)} outcomes. Mean reported prevalence: **{pooled_pem}%**."
+    ))
+  } else {
+    cli::cat_line("No PEM prevalence estimates extracted yet.")
+  }
+}
+```
+
+## Condition Breakdown {#sec-condition}
+
+```{r}
+#| label: condition-table
+#| eval: !expr has_data
+if (has_data && "condition" %in% names(outcomes)) {
+  cond_counts <- outcomes |>
+    dplyr::filter(!is.na(condition)) |>
+    dplyr::count(condition, sort = TRUE)
+  names(cond_counts) <- c("Condition", "Findings")
+  display_table(cond_counts)
+}
+```
+
+::: {.callout-note}
+## Data Status
+
+```{r}
+#| label: data-status
+#| results: asis
+if (!has_data) {
+  cli::cat_line("No extracted data yet. Run the extraction pipeline to populate this review.")
+} else {
+  n_studies <- dplyr::n_distinct(outcomes$study_id)
+  cli::cat_line(glue::glue("{nrow(outcomes)} outcome datapoints from {n_studies} studies."))
+}
+```
+:::

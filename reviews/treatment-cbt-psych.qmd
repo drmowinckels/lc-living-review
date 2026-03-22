@@ -1,0 +1,171 @@
+---
+title: "Treatment: CBT & Psychological Interventions"
+aliases:
+  - /reviews/cbt/
+  - /reviews/psychological/
+---
+
+```{r}
+#| label: setup
+#| include: false
+source(here::here("R/utils.R"))
+source(here::here("R/meta-analysis.R"))
+source(here::here("R/plots.R"))
+
+studies <- read_study_database()
+effects <- read_extracted_data("treatment_cbt_psych")
+quality <- read_quality_ratings()
+has_data <- nrow(effects) > 0
+```
+
+## Overview
+
+This review covers cognitive behavioural therapy (CBT), graded exercise therapy (GET), acceptance and commitment therapy (ACT), the Lightning Process, mindfulness, and self-management interventions for Long COVID and ME/CFS.
+
+```{r}
+#| label: included-studies
+#| results: asis
+topic_studies <- studies |>
+  dplyr::filter(
+    !is.na(search_topic), search_topic == "treatment_cbt_psych",
+    !is.na(llm_relevant), llm_relevant
+  )
+if (nrow(topic_studies) > 0) {
+  n_rct <- sum(grepl("RCT|random", topic_studies$llm_study_type %||% "", ignore.case = TRUE), na.rm = TRUE)
+  cli::cat_line(glue::glue("**{nrow(topic_studies)} relevant studies** ({n_rct} RCTs) identified."))
+}
+```
+
+## Effect Sizes {#sec-effects}
+
+```{r}
+#| label: forest-data
+#| include: false
+forest_fit <- NULL
+forest_h <- 6
+if (has_data && all(c("mean_intervention", "sd_intervention", "n_intervention",
+                      "mean_comparator", "sd_comparator", "n_comparator") %in% names(effects))) {
+  complete <- effects |>
+    dplyr::filter(
+      !is.na(mean_intervention), !is.na(mean_comparator),
+      !is.na(sd_intervention), !is.na(sd_comparator),
+      !is.na(n_intervention), !is.na(n_comparator),
+      n_intervention > 0, n_comparator > 0,
+      sd_intervention > 0, sd_comparator > 0
+    )
+  if (nrow(complete) >= 2) {
+    complete <- complete |>
+      dplyr::rename(
+        mean_treatment = mean_intervention,
+        sd_treatment   = sd_intervention,
+        n_treatment    = n_intervention,
+        mean_control   = mean_comparator,
+        sd_control     = sd_comparator,
+        n_control      = n_comparator
+      ) |>
+      dplyr::mutate(study_label = study_id)
+    es <- compute_effect_sizes(complete, outcome_type = "continuous")
+    forest_fit <- run_meta(es)
+    forest_h <- forest_height(forest_fit$k)
+  }
+}
+```
+
+```{r}
+#| label: forest-plot
+#| eval: !expr '!is.null(forest_fit)'
+#| fig-height: !expr forest_h
+#| fig-cap: "Effect sizes for psychological interventions (positive = benefit)"
+forest_gg(forest_fit, title = "CBT & Psychological Interventions")
+```
+
+## Interventions {#sec-interventions}
+
+```{r}
+#| label: intervention-table
+#| eval: !expr has_data
+if (has_data && "intervention" %in% names(effects)) {
+  int_counts <- effects |>
+    dplyr::filter(!is.na(intervention)) |>
+    dplyr::count(intervention) |>
+    dplyr::arrange(dplyr::desc(n))
+  if (nrow(int_counts) > 0) {
+    names(int_counts) <- c("Intervention", "Effect Sizes")
+    display_table(int_counts)
+  }
+}
+```
+
+## Outcome Measures {#sec-outcomes}
+
+```{r}
+#| label: outcome-table
+#| eval: !expr has_data
+if (has_data && "outcome_measure" %in% names(effects)) {
+  out_counts <- effects |>
+    dplyr::filter(!is.na(outcome_measure)) |>
+    dplyr::count(outcome_measure) |>
+    dplyr::arrange(dplyr::desc(n))
+  if (nrow(out_counts) > 0) {
+    names(out_counts) <- c("Outcome Measure", "N")
+    display_table(out_counts)
+  }
+}
+```
+
+## PEM Assessment {#sec-pem}
+
+```{r}
+#| label: pem-status
+#| results: asis
+#| eval: !expr has_data
+if (has_data && "pem_assessed" %in% names(effects)) {
+  n_pem <- sum(effects$pem_assessed, na.rm = TRUE)
+  n_total <- nrow(effects)
+  pct <- round(n_pem / n_total * 100)
+  cli::cat_line(glue::glue("PEM was assessed in **{n_pem}/{n_total}** ({pct}%) reported outcomes."))
+}
+```
+
+## Risk of Bias {#sec-rob}
+
+```{r}
+#| label: rob-summary
+#| eval: !expr nrow(quality) > 0
+psych_quality <- quality |>
+  dplyr::filter(!is.na(search_topic), search_topic == "treatment_cbt_psych",
+                domain_name == "overall")
+if (nrow(psych_quality) > 0) {
+  rob_counts <- psych_quality |>
+    dplyr::count(judgement)
+  names(rob_counts) <- c("Overall RoB", "Studies")
+  display_table(rob_counts)
+}
+```
+
+## Adverse Events {#sec-safety}
+
+```{r}
+#| label: adverse-events
+#| results: asis
+#| eval: !expr has_data
+if (has_data && "adverse_events_reported" %in% names(effects)) {
+  n_ae <- sum(effects$adverse_events_reported, na.rm = TRUE)
+  cli::cat_line(glue::glue("Adverse events reported in **{n_ae}/{nrow(effects)}** outcomes."))
+}
+```
+
+::: {.callout-note}
+## Data Status
+
+```{r}
+#| label: data-status
+#| results: asis
+if (!has_data) {
+  cli::cat_line("No extracted data yet. Run the extraction pipeline to populate this review.")
+} else {
+  n_studies <- dplyr::n_distinct(effects$study_id)
+  cli::cat_line(glue::glue("{nrow(effects)} effect sizes from {n_studies} studies."))
+}
+```
+:::

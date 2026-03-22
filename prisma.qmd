@@ -1,0 +1,112 @@
+---
+title: "PRISMA Flow Diagram"
+aliases:
+  - /reviews/prisma/
+---
+
+```{r}
+#| label: setup
+#| include: false
+source(here::here("R/utils.R"))
+p <- prisma_counts()
+```
+
+This diagram follows the [PRISMA 2020 reporting standard](https://www.prisma-statement.org/) for systematic reviews.
+
+```{r}
+#| label: prisma-diagram
+#| echo: false
+#| fig-cap: "PRISMA 2020 flow diagram"
+
+n_retrieved     <- if (is.na(p$n_retrieved))  "not recorded" else format(p$n_retrieved,  big.mark = ",")
+n_duplicates    <- if (is.na(p$n_duplicates)) "not recorded" else format(p$n_duplicates, big.mark = ",")
+n_records       <- format(p$n_records,       big.mark = ",")
+n_screened      <- format(p$n_screened,      big.mark = ",")
+n_excluded      <- format(p$n_excluded,      big.mark = ",")
+n_eligible      <- format(p$n_eligible,      big.mark = ",")
+n_extracted     <- format(p$n_extracted,     big.mark = ",")
+n_not_extracted <- format(p$n_not_extracted, big.mark = ",")
+
+db <- read_study_database()
+extracted <- db[!is.na(db$data_extracted) & db$data_extracted, ]
+
+category_labels <- c(
+  treatment_cbt_psych  = "CBT & Psychological",
+  treatment_biomedical = "Biomedical",
+  biomarkers           = "Biomarkers",
+  outcomes             = "Outcomes & Recovery",
+  systematic_reviews   = "Systematic Reviews"
+)
+
+cats <- strsplit(as.character(extracted$llm_category), ",\\s*")
+cat_counts <- table(unlist(cats))
+cat_counts <- cat_counts[intersect(names(category_labels), names(cat_counts))]
+
+cat_nodes <- ""
+cat_edges <- ""
+for (nm in names(cat_counts)) {
+  label <- category_labels[nm]
+  n <- cat_counts[[nm]]
+  node_id <- gsub("[^a-z]", "", nm)
+  cat_nodes <- paste0(
+    cat_nodes,
+    sprintf('  %s [label = "%s\\n(n = %s)", fillcolor = "#e3f2fd"]\n',
+            node_id, label, format(n, big.mark = ","))
+  )
+  cat_edges <- paste0(cat_edges, sprintf("  included -> %s\n", node_id))
+}
+
+DiagrammeR::grViz(sprintf('
+digraph PRISMA {
+  graph [layout = dot, rankdir = TB, fontname = "Helvetica", fontsize = 12]
+  node  [shape = rectangle, style = filled, fillcolor = "#f0f4f8",
+         fontname = "Helvetica", fontsize = 11, margin = "0.2,0.1"]
+  edge  [fontname = "Helvetica", fontsize = 10]
+
+  identified  [label = "Records identified\\nfrom EuropePMC\\n(n = %s)"]
+  duplicates  [label = "Records removed\\nbefore screening\\nDuplicates (n = %s)", fillcolor = "#fde8e8"]
+  records     [label = "Records in database\\n(n = %s)"]
+  screened    [label = "Records screened\\n(title + abstract)\\n(n = %s)"]
+  excluded    [label = "Records excluded\\nby LLM screening\\n(n = %s)", fillcolor = "#fde8e8"]
+  eligible    [label = "Records eligible\\nfor extraction\\n(n = %s)"]
+  notextracted [label = "Records without\\nextraction consensus\\n(n = %s)", fillcolor = "#fde8e8"]
+  included    [label = "Studies included\\nin evidence synthesis\\n(n = %s)", fillcolor = "#e8f5e9"]
+
+%s
+
+  identified  -> duplicates  [style = dashed]
+  identified  -> records
+  records     -> screened
+  screened    -> excluded    [style = dashed]
+  screened    -> eligible
+  eligible    -> notextracted [style = dashed]
+  eligible    -> included
+%s
+}
+', n_retrieved, n_duplicates, n_records, n_screened, n_excluded,
+   n_eligible, n_not_extracted, n_extracted, cat_nodes, cat_edges))
+```
+
+Studies are classified into review categories based on LLM screening. A single study may contribute to multiple categories (e.g., a trial reporting both treatment effects and biomarker outcomes).
+
+## Counts by search topic
+
+```{r}
+#| label: topic-table
+source(here::here("R/utils.R"))
+db <- read_study_database()
+
+topic_summary <- db |>
+  dplyr::group_by(search_topic) |>
+  dplyr::summarise(
+    n_added     = dplyr::n(),
+    n_screened  = sum(!is.na(llm_relevant)),
+    n_relevant  = sum(llm_relevant, na.rm = TRUE),
+    n_extracted = sum(data_extracted, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  dplyr::arrange(search_topic)
+
+names(topic_summary) <- c("Topic", "Added", "Screened", "Relevant", "Extracted")
+display_table(topic_summary)
+```

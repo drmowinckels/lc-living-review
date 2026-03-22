@@ -1,0 +1,67 @@
+---
+title: "GRADE Evidence Profiles"
+aliases:
+  - /reviews/grade/
+---
+
+```{r}
+source(here::here("R/utils.R"))
+grade <- read_grade_data()
+```
+
+```{r}
+#| results: asis
+if (nrow(grade) == 0) {
+  cli::cat_line("No GRADE assessments available yet.")
+} else {
+  certainty_colours <- c(
+    high       = "#28a745",
+    moderate   = "#daa520",
+    low        = "#fd7e14",
+    `very low` = "#dc3545"
+  )
+
+  grade$group <- dplyr::coalesce(grade$domain, grade$search_topic, "other")
+  grade$group <- gsub("_", " ", grade$group) |> tools::toTitleCase()
+
+  display_cols <- intersect(
+    c("outcome", "n_studies", "n_participants", "effect_estimate", "certainty"),
+    names(grade)
+  )
+  display_names <- c(
+    outcome = "Outcome",
+    n_studies = "Studies",
+    n_participants = "Participants",
+    effect_estimate = "Effect Estimate",
+    certainty = "Certainty"
+  )[display_cols]
+
+  grade$outcome <- sub("^[^:]+:\\s*", "", grade$outcome)
+
+  for (grp in unique(grade$group)) {
+    cli::cat_line(glue::glue("\n\n## {grp}\n"))
+    sub <- grade[grade$group == grp, , drop = FALSE]
+    df <- sub[, display_cols, drop = FALSE]
+    names(df) <- display_names[display_cols]
+
+    tbl <- display_table(df)
+
+    if ("Certainty" %in% names(df)) {
+      for (cert in names(certainty_colours)) {
+        rows <- which(tolower(df$Certainty) == cert)
+        if (length(rows) > 0) {
+          tbl <- tbl |>
+            gt::tab_style(
+              style = list(
+                gt::cell_text(color = certainty_colours[cert], weight = "bold")
+              ),
+              locations = gt::cells_body(columns = "Certainty", rows = rows)
+            )
+        }
+      }
+    }
+
+    print(gt::as_raw_html(tbl))
+  }
+}
+```

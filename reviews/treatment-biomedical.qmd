@@ -1,0 +1,176 @@
+---
+title: "Treatment: Biomedical Interventions"
+aliases:
+  - /reviews/biomedical/
+  - /reviews/pharmacological/
+---
+
+```{r}
+#| label: setup
+#| include: false
+source(here::here("R/utils.R"))
+source(here::here("R/meta-analysis.R"))
+source(here::here("R/plots.R"))
+
+studies <- read_study_database()
+effects <- read_extracted_data("treatment_biomedical")
+quality <- read_quality_ratings()
+has_data <- nrow(effects) > 0
+```
+
+## Overview
+
+This review covers pharmacological and device-based interventions for Long COVID and ME/CFS, including low-dose naltrexone (LDN), antihistamines, antivirals, immunomodulators, anticoagulants, apheresis, and nutritional supplements.
+
+```{r}
+#| label: included-studies
+#| results: asis
+topic_studies <- studies |>
+  dplyr::filter(
+    !is.na(search_topic), search_topic == "treatment_biomedical",
+    !is.na(llm_relevant), llm_relevant
+  )
+if (nrow(topic_studies) > 0) {
+  n_rct <- sum(grepl("RCT|random", topic_studies$llm_study_type %||% "", ignore.case = TRUE), na.rm = TRUE)
+  cli::cat_line(glue::glue("**{nrow(topic_studies)} relevant studies** ({n_rct} RCTs) identified."))
+}
+```
+
+## Effect Sizes {#sec-effects}
+
+```{r}
+#| label: forest-data
+#| include: false
+forest_fit <- NULL
+forest_h <- 6
+if (has_data && all(c("mean_intervention", "sd_intervention", "n_intervention",
+                      "mean_comparator", "sd_comparator", "n_comparator") %in% names(effects))) {
+  complete <- effects |>
+    dplyr::filter(
+      !is.na(mean_intervention), !is.na(mean_comparator),
+      !is.na(sd_intervention), !is.na(sd_comparator),
+      !is.na(n_intervention), !is.na(n_comparator),
+      n_intervention > 0, n_comparator > 0,
+      sd_intervention > 0, sd_comparator > 0
+    ) |>
+    dplyr::rename(
+      mean_treatment = mean_intervention,
+      sd_treatment   = sd_intervention,
+      n_treatment    = n_intervention,
+      mean_control   = mean_comparator,
+      sd_control     = sd_comparator,
+      n_control      = n_comparator
+    ) |>
+    dplyr::mutate(study_label = study_id)
+  if (nrow(complete) >= 2) {
+    es <- compute_effect_sizes(complete, outcome_type = "continuous")
+    forest_fit <- run_meta(es)
+    forest_h <- forest_height(forest_fit$k)
+  }
+}
+```
+
+```{r}
+#| label: forest-plot
+#| eval: !expr '!is.null(forest_fit)'
+#| fig-height: !expr forest_h
+#| fig-cap: "Effect sizes for biomedical interventions (positive = benefit)"
+forest_gg(forest_fit, title = "Biomedical Interventions")
+```
+
+## Interventions {#sec-interventions}
+
+```{r}
+#| label: intervention-table
+#| eval: !expr has_data
+if (has_data && "intervention" %in% names(effects)) {
+  int_counts <- effects |>
+    dplyr::filter(!is.na(intervention)) |>
+    dplyr::count(intervention) |>
+    dplyr::arrange(dplyr::desc(n))
+  if (nrow(int_counts) > 0) {
+    names(int_counts) <- c("Intervention", "Effect Sizes")
+    display_table(int_counts)
+  }
+}
+```
+
+## Dosing & Protocol {#sec-dose}
+
+```{r}
+#| label: dose-table
+#| eval: !expr has_data
+if (has_data && "dose" %in% names(effects)) {
+  dose_df <- effects |>
+    dplyr::filter(!is.na(dose), !is.na(intervention)) |>
+    dplyr::select(study_id, intervention, dose) |>
+    dplyr::distinct()
+  if (nrow(dose_df) > 0) {
+    names(dose_df) <- c("Study", "Intervention", "Dose / Protocol")
+    display_table(dose_df)
+  }
+}
+```
+
+## PEM Assessment {#sec-pem}
+
+```{r}
+#| label: pem-status
+#| results: asis
+#| eval: !expr has_data
+if (has_data && "pem_assessed" %in% names(effects)) {
+  n_pem <- sum(effects$pem_assessed, na.rm = TRUE)
+  pct <- round(n_pem / nrow(effects) * 100)
+  cli::cat_line(glue::glue("PEM was assessed in **{n_pem}/{nrow(effects)}** ({pct}%) reported outcomes."))
+}
+```
+
+## Risk of Bias {#sec-rob}
+
+```{r}
+#| label: rob-summary
+#| eval: !expr nrow(quality) > 0
+biomed_quality <- quality |>
+  dplyr::filter(!is.na(search_topic), search_topic == "treatment_biomedical", domain_name == "overall")
+if (nrow(biomed_quality) > 0) {
+  rob_counts <- biomed_quality |>
+    dplyr::count(judgement)
+  names(rob_counts) <- c("Overall RoB", "Studies")
+  display_table(rob_counts)
+}
+```
+
+## Adverse Events {#sec-safety}
+
+```{r}
+#| label: adverse-events
+#| results: asis
+#| eval: !expr has_data
+if (has_data && "adverse_events_reported" %in% names(effects)) {
+  n_ae <- sum(effects$adverse_events_reported, na.rm = TRUE)
+  pct <- if (nrow(effects) > 0) round(n_ae / nrow(effects) * 100) else 0
+  cli::cat_line(glue::glue("Adverse events reported in **{n_ae}/{nrow(effects)}** ({pct}%) outcomes."))
+  if (n_ae > 0 && "adverse_events_detail" %in% names(effects)) {
+    details <- effects$adverse_events_detail[!is.na(effects$adverse_events_detail) & effects$adverse_events_detail != ""]
+    if (length(details) > 0) {
+      cli::cat_line("\n**Reported adverse events:**\n")
+      purrr::walk(unique(details), \(d) cli::cat_bullet(d))
+    }
+  }
+}
+```
+
+::: {.callout-note}
+## Data Status
+
+```{r}
+#| label: data-status
+#| results: asis
+if (!has_data) {
+  cli::cat_line("No extracted data yet. Run the extraction pipeline to populate this review.")
+} else {
+  n_studies <- dplyr::n_distinct(effects$study_id)
+  cli::cat_line(glue::glue("{nrow(effects)} effect sizes from {n_studies} studies."))
+}
+```
+:::
