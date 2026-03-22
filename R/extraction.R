@@ -1260,13 +1260,29 @@ extract_tables_from_xml <- function(xml_doc) {
   )
 }
 
+pmid_to_pmcid <- function(pmid) {
+  url <- sprintf("https://www.ncbi.nlm.nih.gov/pmc/utils/idconv/v1.0/?ids=%s&format=json", pmid)
+  resp <- tryCatch(
+    httr2::request(url) |> httr2::req_timeout(10) |>
+      httr2::req_error(is_error = \(r) FALSE) |> httr2::req_perform(),
+    error = function(e) NULL
+  )
+  if (is.null(resp) || httr2::resp_status(resp) != 200) return(NULL)
+  body <- jsonlite::fromJSON(httr2::resp_body_string(resp))
+  pmcid <- tryCatch(body$records$pmcid[1], error = function(e) NA)
+  if (is.null(pmcid) || is.na(pmcid) || pmcid == "") NULL else pmcid
+}
+
 fetch_fulltext_sections <- function(pmid) {
   if (is.na(pmid) || pmid == "") {
     return(NULL)
   }
 
+  pmcid <- pmid_to_pmcid(pmid)
+  if (is.null(pmcid)) return(NULL)
+
   xml_doc <- tryCatch(
-    suppressMessages(europepmc::epmc_ftxt(ext_id = pmid, data_src = "PMC")),
+    suppressMessages(europepmc::epmc_ftxt(ext_id = pmcid)),
     error = function(e) NULL
   )
   if (is.null(xml_doc)) {
