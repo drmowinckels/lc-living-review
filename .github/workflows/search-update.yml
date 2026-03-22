@@ -33,6 +33,15 @@ jobs:
       - name: Run search pipeline
         run: Rscript .github/scripts/run-search.R
 
+      - name: Audit outcome domain categories (first Monday of month)
+        run: |
+          DAY=$(date -u +%d)
+          if [ "$DAY" -le 7 ]; then
+            Rscript scripts/audit-categories.R
+          else
+            echo "Skipping — not the first week of the month"
+          fi
+
       - name: Check for changes
         id: changes
         run: |
