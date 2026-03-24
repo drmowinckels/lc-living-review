@@ -20,7 +20,12 @@ has_data <- nrow(effects) > 0
 
 ## Overview
 
-This review covers cognitive behavioural therapy (CBT), graded exercise therapy (GET), acceptance and commitment therapy (ACT), the Lightning Process, mindfulness, and self-management interventions for Long COVID and ME/CFS.
+Psychological and behavioural interventions are among the most studied — and most debated — approaches for Long COVID and ME/CFS.
+This review covers CBT, graded exercise therapy (GET), acceptance and commitment therapy (ACT), the Lightning Process, mindfulness, pacing programmes, and self-management interventions.
+
+The evidence base is large, but the picture is complicated.
+Many trials use different outcome measures, different diagnostic criteria, and different definitions of what counts as "improvement."
+The data below reflects that heterogeneity honestly.
 
 ```{r}
 #| label: included-studies
@@ -39,59 +44,75 @@ if (nrow(topic_studies) > 0) {
 }
 ```
 
-## Effect Sizes {#sec-effects}
+## Effects by Intervention {#sec-effects-intervention}
+
+Pooling every psychological intervention into a single number hides more than it reveals.
+The plot below breaks the evidence apart by intervention category — each diamond is the pooled effect for one type of intervention, sized by the number of study–outcome pairs contributing.
+This tells you which approaches have been studied most and where the effect estimates point.
 
 ```{r}
 #| label: forest-data
 #| include: false
-forest_fit <- NULL
-forest_h <- 6
-if (has_data && all(c("mean_intervention", "sd_intervention", "n_intervention",
-                      "mean_comparator", "sd_comparator", "n_comparator") %in% names(effects))) {
-  complete <- effects |>
-    dplyr::filter(
-      !is.na(mean_intervention), !is.na(mean_comparator),
-      !is.na(sd_intervention), !is.na(sd_comparator),
-      !is.na(n_intervention), !is.na(n_comparator),
-      n_intervention > 0, n_comparator > 0,
-      sd_intervention > 0, sd_comparator > 0
-    )
-  if (nrow(complete) >= 2) {
-    complete <- complete |>
-      dplyr::rename(
-        mean_treatment = mean_intervention,
-        sd_treatment   = sd_intervention,
-        n_treatment    = n_intervention,
-        mean_control   = mean_comparator,
-        sd_control     = sd_comparator,
-        n_control      = n_comparator
-      ) |>
-      dplyr::mutate(study_label = study_id)
-    es <- compute_effect_sizes(complete, outcome_type = "continuous")
-    forest_fit <- run_meta(es)
-    forest_h <- forest_height(forest_fit$k)
-  }
+forest_df <- if (has_data) prepare_forest_data(effects) else data.frame()
+has_forest <- nrow(forest_df) >= 2
+intervention_forest_h <- 6
+domain_forest_h <- 6
+if (has_forest && "intervention_category" %in% names(forest_df)) {
+  n_int <- length(unique(forest_df$intervention_category[!is.na(forest_df$intervention_category)]))
+  intervention_forest_h <- bar_height(n_int)
+}
+if (has_forest && "outcome_domain" %in% names(forest_df)) {
+  n_dom <- length(unique(forest_df$outcome_domain[!is.na(forest_df$outcome_domain)]))
+  domain_forest_h <- bar_height(n_dom)
 }
 ```
 
 ```{r}
-#| label: forest-plot
-#| eval: !expr '!is.null(forest_fit)'
-#| fig-height: !expr forest_h
-#| fig-cap: "Effect sizes for psychological interventions (positive = benefit)"
-forest_gg(forest_fit, title = "CBT & Psychological Interventions")
+#| label: intervention-forest
+#| eval: !expr 'has_forest && "intervention_category" %in% names(forest_df)'
+#| fig-height: !expr intervention_forest_h
+#| fig-alt: "Forest plot showing pooled effect sizes for each intervention category, with diamond size proportional to the number of contributing studies"
+#| fig-cap: "Pooled effect sizes by intervention type. Each row is a separate random-effects meta-analysis. Larger diamonds indicate more contributing study–outcome pairs. Negative values favour the intervention over the comparator."
+subgroup_forest(
+  forest_df, group_col = "intervention_category",
+  title = "Pooled effects by intervention type"
+)
+```
+
+## Effects by Outcome Domain {#sec-effects-domain}
+
+The same data, sliced differently.
+Here the pooling is by what was measured rather than what was done.
+This answers a different question: across all psychological interventions, which outcomes show the most consistent effects?
+
+```{r}
+#| label: domain-forest
+#| eval: !expr 'has_forest && "outcome_domain" %in% names(forest_df)'
+#| fig-height: !expr domain_forest_h
+#| fig-alt: "Forest plot showing pooled effect sizes for each outcome domain, with diamond size proportional to the number of contributing studies"
+#| fig-cap: "Pooled effect sizes by outcome domain. Each row pools all interventions that measured that domain. Negative values indicate improvement."
+subgroup_forest(
+  forest_df, group_col = "outcome_domain",
+  title = "Pooled effects by outcome domain"
+)
 ```
 
 ## Interventions {#sec-interventions}
 
+The table below groups individual intervention names into broader categories.
+A single study may contribute multiple effect sizes — one per outcome — so the counts reflect reported outcomes, not unique trials.
+
+CBT and exercise-based approaches dominate the literature, but the category labels hide real diversity.
+"CBT" includes everything from face-to-face individual therapy to internet-delivered group programmes.
+"Exercise" spans supervised gym sessions to home-based walking programmes.
+
 ```{r}
 #| label: intervention-table
 #| eval: !expr has_data
-if (has_data && "intervention" %in% names(effects)) {
+if (has_data && "intervention_category" %in% names(effects)) {
   int_counts <- effects |>
-    dplyr::filter(!is.na(intervention)) |>
-    dplyr::count(intervention) |>
-    dplyr::arrange(dplyr::desc(n))
+    dplyr::filter(!is.na(intervention_category)) |>
+    dplyr::count(intervention_category, sort = TRUE)
   if (nrow(int_counts) > 0) {
     names(int_counts) <- c("Intervention", "Effect Sizes")
     display_table(int_counts)
@@ -101,22 +122,120 @@ if (has_data && "intervention" %in% names(effects)) {
 
 ## Outcome Measures {#sec-outcomes}
 
+Outcome measurement is one of the biggest sources of heterogeneity in this literature.
+The table below shows which instruments are used, grouped by the domain they measure.
+The same construct — fatigue, say — gets measured with the Chalder Fatigue Scale in one trial, the MFI-20 in another, and a simple VAS in a third.
+This makes direct comparison across studies harder than it should be.
+
 ```{r}
 #| label: outcome-table
 #| eval: !expr has_data
 if (has_data && "outcome_measure" %in% names(effects)) {
   out_counts <- effects |>
     dplyr::filter(!is.na(outcome_measure)) |>
-    dplyr::count(outcome_measure) |>
-    dplyr::arrange(dplyr::desc(n))
+    dplyr::mutate(
+      domain = dplyr::coalesce(outcome_domain, "other")
+    ) |>
+    dplyr::count(domain, outcome_measure, sort = TRUE)
   if (nrow(out_counts) > 0) {
-    names(out_counts) <- c("Outcome Measure", "N")
+    names(out_counts) <- c("Domain", "Outcome Measure", "N")
     display_table(out_counts)
   }
 }
 ```
 
+## Outcomes by Domain {#sec-domains}
+
+Rather than comparing individual instruments, we can group outcomes into broad domains — fatigue, physical function, quality of life, and so on — to see where the evidence concentrates.
+
+The bar chart shows how many effect sizes fall into each domain.
+The summary table below it pools effect sizes within each domain that has enough studies for a meta-analysis (at least two with complete data).
+
+```{r}
+#| label: domain-bar-data
+#| include: false
+domain_df <- NULL
+domain_h <- 4
+if (has_data && "outcome_domain" %in% names(effects)) {
+  domain_df <- effects |>
+    dplyr::filter(!is.na(outcome_domain)) |>
+    dplyr::count(outcome_domain, sort = TRUE) |>
+    dplyr::mutate(outcome_domain = factor(outcome_domain, levels = rev(outcome_domain)))
+  domain_h <- bar_height(nrow(domain_df))
+}
+```
+
+```{r}
+#| label: domain-bar
+#| eval: !expr '!is.null(domain_df) && nrow(domain_df) > 0'
+#| fig-height: !expr domain_h
+#| fig-alt: "Horizontal bar chart showing the number of extracted effect sizes per outcome domain, with fatigue and physical function having the most"
+#| fig-cap: "Distribution of effect sizes across outcome domains. Each bar represents how many study–outcome pairs reported on that domain."
+ggplot(domain_df, aes(x = n, y = outcome_domain)) +
+  geom_col(fill = cols_review["clinical"], width = 0.7) +
+  geom_text(aes(label = n), hjust = -0.2, size = 3.5) +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.15))) +
+  labs(x = "Effect sizes", y = NULL) +
+  theme_review
+```
+
+```{r}
+#| label: domain-forest-data
+#| include: false
+domain_fits <- list()
+domain_forest_h <- 6
+if (has_data && all(c("mean_intervention", "sd_intervention", "n_intervention",
+                      "mean_comparator", "sd_comparator", "n_comparator",
+                      "outcome_domain") %in% names(effects))) {
+  for (dom in unique(effects$outcome_domain[!is.na(effects$outcome_domain)])) {
+    dom_data <- effects |>
+      dplyr::filter(
+        outcome_domain == dom,
+        !is.na(mean_intervention), !is.na(mean_comparator),
+        !is.na(sd_intervention), !is.na(sd_comparator),
+        !is.na(n_intervention), !is.na(n_comparator),
+        n_intervention > 0, n_comparator > 0,
+        sd_intervention > 0, sd_comparator > 0
+      ) |>
+      dplyr::rename(
+        mean_treatment = mean_intervention, sd_treatment = sd_intervention,
+        n_treatment = n_intervention, mean_control = mean_comparator,
+        sd_control = sd_comparator, n_control = n_comparator
+      ) |>
+      dplyr::mutate(study_label = paste0(study_id, ": ", outcome_measure))
+    if (nrow(dom_data) >= 2) {
+      es <- compute_effect_sizes(dom_data, outcome_type = "continuous")
+      domain_fits[[dom]] <- run_meta(es)
+    }
+  }
+  if (length(domain_fits) > 0) {
+    total_k <- sum(vapply(domain_fits, \(f) f$k, integer(1)))
+    domain_forest_h <- forest_height(total_k + length(domain_fits))
+  }
+}
+```
+
+```{r}
+#| label: domain-summary-table
+#| eval: !expr 'length(domain_fits) > 0'
+domain_summary <- purrr::imap_dfr(domain_fits, \(fit, dom) {
+  data.frame(
+    Domain = dom,
+    k = fit$k,
+    SMD = round(coef(fit), 2),
+    CI = paste0("[", round(fit$ci.lb, 2), ", ", round(fit$ci.ub, 2), "]"),
+    p = formatC(fit$pval, format = "g", digits = 3),
+    I2 = paste0(round(fit$I2, 1), "%")
+  )
+}) |> dplyr::arrange(SMD)
+display_table(domain_summary)
+```
+
 ## PEM Assessment {#sec-pem}
+
+Post-exertional malaise (PEM) is the hallmark symptom of ME/CFS and a core feature of Long COVID.
+Whether a study assessed PEM matters because interventions that increase activity — like GET — can trigger PEM in susceptible patients.
+A trial that does not measure PEM cannot detect this harm.
 
 ```{r}
 #| label: pem-status
@@ -131,6 +250,9 @@ if (has_data && "pem_assessed" %in% names(effects)) {
 ```
 
 ## Risk of Bias {#sec-rob}
+
+Risk of bias ratings follow the Cochrane ROB2 tool for RCTs and ROBINS-I for observational studies.
+The table below shows overall judgements where quality assessment has been completed.
 
 ```{r}
 #| label: rob-summary
@@ -147,6 +269,9 @@ if (nrow(psych_quality) > 0) {
 ```
 
 ## Adverse Events {#sec-safety}
+
+Adverse event reporting is inconsistent across trials.
+Many studies do not mention adverse events at all, which does not mean none occurred — it means we cannot tell.
 
 ```{r}
 #| label: adverse-events
@@ -171,4 +296,7 @@ if (!has_data) {
   cli::cat_line(glue::glue("{nrow(effects)} effect sizes from {n_studies} studies."))
 }
 ```
+
+This is a living review.
+Data is extracted automatically from published studies and updated as new evidence becomes available.
 :::

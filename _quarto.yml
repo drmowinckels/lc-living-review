@@ -15,12 +15,27 @@ website:
         menu:
           - text: Treatment Effectiveness
             href: reviews/treatment-effectiveness.qmd
+          - text: "— CBT & Psychological"
+            href: reviews/treatment-cbt-psych.qmd
+          - text: "— Biomedical"
+            href: reviews/treatment-biomedical.qmd
+          - text: "— Treatment Comparison"
+            href: reviews/treatment-comparison.qmd
+          - text: ---
+          - text: Biomarkers
+            href: reviews/biomarkers.qmd
+          - text: Outcomes
+            href: reviews/outcomes.qmd
+          - text: ---
           - text: Prevalence
             href: reviews/prevalence.qmd
           - text: PEM Prevalence
             href: reviews/pem-prevalence.qmd
           - text: Recovery Trajectories
             href: reviews/recovery-trajectories.qmd
+          - text: ---
+          - text: GRADE Assessment
+            href: reviews/grade.qmd
       - text: Study Database
         href: study-database.qmd
     right:
@@ -33,7 +48,9 @@ website:
 
 format:
   html:
-    theme: cosmo
+    theme:
+      light: cosmo
+      dark: darkly
     toc: true
     toc-depth: 3
     number-sections: true

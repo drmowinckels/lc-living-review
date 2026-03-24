@@ -18,7 +18,9 @@ has_data <- nrow(bm) > 0
 
 ## Overview
 
-This review synthesises biomarker findings in Long COVID and ME/CFS, covering immune dysfunction, autoantibodies, neuroinflammation, microclots, endothelial dysfunction, metabolomics, and proteomics.
+Biomarkers are measurable biological signals -- proteins, metabolites, immune markers, imaging findings -- that can reveal what is happening in the body at a level symptoms alone cannot reach.
+For Long COVID and ME/CFS, biomarker research serves two purposes: it can validate patients' experiences with objective evidence, and it can point toward treatment targets.
+This review synthesises biomarker findings across immune dysfunction, autoantibodies, neuroinflammation, microclots, endothelial dysfunction, metabolomics, and proteomics.
 
 ```{r}
 #| label: included-studies
@@ -35,6 +37,10 @@ if (nrow(topic_studies) > 0) {
 
 ## Biomarker Types {#sec-types}
 
+The table below groups every extracted biomarker finding by its biological category.
+Some categories (immune markers, cytokines) appear far more often than others, reflecting where researchers have focused -- not necessarily where the strongest signals live.
+Gaps in underrepresented categories may be as informative as the clusters of findings in well-studied ones.
+
 ```{r}
 #| label: type-summary
 #| eval: !expr has_data
@@ -50,6 +56,11 @@ if (has_data && "biomarker_type" %in% names(bm)) {
 ```
 
 ## Direction of Findings {#sec-direction}
+
+Whether a biomarker is elevated or reduced in patients relative to controls matters enormously for interpretation.
+A consistently elevated inflammatory marker across many studies strengthens the case for that pathway's involvement.
+Mixed results -- some studies finding elevation, others finding no difference -- may reflect genuine biological heterogeneity across patient subgroups, or they may signal measurement inconsistencies.
+The chart below stacks finding directions for each biomarker type so you can see at a glance where the evidence converges and where it diverges.
 
 ```{r}
 #| label: direction-data
@@ -72,7 +83,8 @@ if (has_data && all(c("biomarker_type", "finding_direction") %in% names(bm))) {
 #| label: direction-plot
 #| eval: !expr '!is.null(dir_counts)'
 #| fig-height: !expr dir_h
-#| fig-cap: "Direction of biomarker findings by type"
+#| fig-cap: "Stacked bar chart showing how many findings report each biomarker type as elevated, reduced, mixed, or showing no difference -- revealing where evidence converges."
+#| fig-alt: "Horizontal stacked bar chart with biomarker types on the y-axis and number of findings on the x-axis. Each bar is segmented by finding direction: elevated (orange-red), reduced (blue), no difference (grey), and mixed (yellow)."
 library(ggplot2)
 ggplot(dir_counts, aes(x = reorder(Type, n), y = n, fill = Direction)) +
   geom_col(position = "stack") +
@@ -87,6 +99,11 @@ ggplot(dir_counts, aes(x = reorder(Type, n), y = n, fill = Direction)) +
 ```
 
 ## Condition Comparison {#sec-condition}
+
+Long COVID and ME/CFS share substantial symptom overlap, and a key question is whether they also share biological mechanisms.
+When a biomarker finding appears in studies of both conditions, it strengthens the case for shared pathophysiology.
+Findings unique to one condition may reflect genuine biological differences or simply gaps in the research -- ME/CFS has decades of biomarker literature, while Long COVID research is only a few years old.
+The table below shows how findings distribute across conditions.
 
 ```{r}
 #| label: condition-comparison
@@ -106,6 +123,10 @@ if (has_data && all(c("condition", "biomarker_name", "finding_direction") %in% n
 
 ## Top Biomarkers {#sec-top}
 
+The most-studied biomarkers are listed here ranked by how many separate study findings mention them.
+High frequency does not equal high importance -- it often reflects ease of measurement or existing research momentum.
+Still, biomarkers that appear repeatedly across independent groups are worth watching closely.
+
 ```{r}
 #| label: top-biomarkers
 #| eval: !expr has_data
@@ -120,6 +141,10 @@ if (has_data && "biomarker_name" %in% names(bm)) {
 ```
 
 ## Diagnostic Performance {#sec-diagnostic}
+
+A biomarker is only clinically useful if it can reliably distinguish patients from healthy controls.
+Sensitivity tells you how often the test correctly identifies someone who has the condition; specificity tells you how often it correctly rules out someone who does not.
+Few biomarkers for Long COVID or ME/CFS have reached the threshold for clinical diagnostic use, but the table below shows what has been reported so far.
 
 ```{r}
 #| label: diagnostic-table
@@ -142,6 +167,10 @@ if (has_data && all(c("sensitivity", "specificity") %in% names(bm))) {
 
 ## PEM & Biomarkers {#sec-pem}
 
+Post-exertional malaise (PEM) -- the hallmark worsening of symptoms after physical or cognitive effort -- is the defining feature of ME/CFS and appears in a large subset of Long COVID patients.
+Whether a biomarker study assessed PEM in its participants matters: a sample that includes patients with PEM may show different biological profiles than one that does not.
+Tracking how often PEM is assessed alongside biomarker measurement helps us judge the quality and applicability of findings.
+
 ```{r}
 #| label: pem-biomarkers
 #| results: asis
@@ -154,7 +183,10 @@ if (has_data && "pem_assessed" %in% names(bm)) {
 ```
 
 ::: {.callout-note}
-## Data Status
+## Living Review
+
+This page is part of a living systematic review and is updated as new studies are identified, screened, and extracted.
+The data, figures, and pooled estimates will change over time.
 
 ```{r}
 #| label: data-status

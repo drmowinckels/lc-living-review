@@ -19,7 +19,10 @@ has_data <- nrow(outcomes) > 0
 
 ## Overview
 
-This review synthesises longitudinal outcome and recovery data for Long COVID and ME/CFS, covering fatigue, physical function, quality of life, PEM, and recovery rates. Studies are stratified by PEM status where available.
+Outcomes data tracks what happens to patients over time in the absence of specific interventions.
+This is distinct from treatment trials -- here we are looking at the natural history of Long COVID and ME/CFS.
+Understanding natural trajectories matters because without a clear baseline of what happens without treatment, it is impossible to judge whether an intervention actually helps.
+This review synthesises longitudinal data on fatigue, physical function, quality of life, PEM, and recovery rates, stratified by PEM status where available.
 
 ```{r}
 #| label: included-studies
@@ -36,6 +39,10 @@ if (nrow(topic_studies) > 0) {
 
 ## Outcome Domains {#sec-domains}
 
+Studies measure patient outcomes in different ways -- some track fatigue severity, others physical function scores, others quality of life indices.
+The table below shows how many findings we have in each domain.
+Domains with more findings give us more confidence in pooled estimates; domains with few findings are areas where more research is needed.
+
 ```{r}
 #| label: domain-summary
 #| eval: !expr has_data
@@ -51,6 +58,10 @@ if (has_data && "outcome_domain" %in% names(outcomes)) {
 ```
 
 ## Recovery Rates {#sec-recovery}
+
+Recovery rates are among the most contested numbers in Long COVID research.
+A study's reported recovery rate depends entirely on how it defines "recovery" -- return to work, symptom resolution, self-reported improvement, or something else.
+The mean recovery rate below is a rough summary; the forest plot shows individual study estimates so you can see the full spread.
 
 ```{r}
 #| label: recovery-summary
@@ -95,15 +106,24 @@ if (has_data && all(c("recovery_n", "n_total") %in% names(outcomes))) {
 }
 ```
 
+The forest plot below displays each study's recovery estimate as a point with a 95% confidence interval.
+Wide intervals indicate small samples or high uncertainty.
+When studies cluster in a narrow band, the evidence is more consistent; when they scatter widely, heterogeneity in study populations or definitions is likely driving the differences.
+
 ```{r}
 #| label: recovery-plot
 #| eval: !expr '!is.null(rec_plot_df)'
 #| fig-height: !expr recovery_h
 #| fig-cap: !expr 'if (n_recovery_total > 50) paste0("Recovery rates (50 lowest of ", n_recovery_total, " datapoints)") else "Reported recovery rates by study"'
+#| fig-alt: "Forest plot showing individual study recovery rate estimates as points with horizontal 95% confidence interval lines, ordered by effect size."
 prevalence_plot(rec_plot_df, title = "Recovery Rates")
 ```
 
 ## Recovery Definitions {#sec-definitions}
+
+How a study defines "recovery" profoundly shapes its reported recovery rate.
+A study that counts "return to work" as recovery will report higher rates than one requiring full symptom resolution.
+This table catalogues the definitions used across studies so you can judge which rates are comparable.
 
 ```{r}
 #| label: recovery-definitions
@@ -120,6 +140,10 @@ if (has_data && "recovery_definition" %in% names(outcomes)) {
 ```
 
 ## Outcome Trajectories {#sec-trajectories}
+
+The trajectory plot shows how much each outcome domain changed between baseline and final follow-up.
+Positive values mean improvement; negative values mean worsening.
+A box that straddles the zero line suggests that some patients improved while others did not, or that improvement was modest relative to measurement variability.
 
 ```{r}
 #| label: trajectory-data
@@ -141,7 +165,8 @@ if (has_data && all(c("baseline_mean", "final_mean", "outcome_domain") %in% name
 #| label: trajectory-plot
 #| eval: !expr '!is.null(traj_df)'
 #| fig-height: !expr traj_h
-#| fig-cap: "Outcome trajectories over follow-up (baseline vs final mean)"
+#| fig-cap: "Change from baseline to final follow-up by outcome domain -- boxes above the dashed zero line indicate improvement, boxes below indicate worsening."
+#| fig-alt: "Horizontal box-and-jitter plot with outcome domains on the y-axis and change from baseline on the x-axis. A dashed vertical line at zero separates improvement (right) from worsening (left). Individual data points are overlaid as jittered dots."
 library(ggplot2)
 ggplot(traj_df, aes(x = reorder(outcome_domain, change, FUN = median), y = change)) +
   geom_hline(yintercept = 0, linetype = "dashed", colour = "grey50") +
@@ -157,6 +182,10 @@ ggplot(traj_df, aes(x = reorder(outcome_domain, change, FUN = median), y = chang
 ```
 
 ## PEM Prevalence {#sec-pem}
+
+Post-exertional malaise (PEM) is the symptom most likely to distinguish Long COVID and ME/CFS from ordinary post-viral fatigue.
+When outcomes studies report PEM prevalence in their cohorts, it helps us understand whether the sample includes the patients most affected by these conditions.
+A cohort with low PEM prevalence may have better outcomes simply because it contains fewer severely affected patients, not because recovery is common.
 
 ```{r}
 #| label: pem-prevalence
@@ -177,6 +206,8 @@ if (has_data && "pem_prevalence" %in% names(outcomes)) {
 
 ## Condition Breakdown {#sec-condition}
 
+Separating findings by condition lets you see whether outcome patterns differ between Long COVID and ME/CFS, or whether the two conditions follow similar trajectories.
+
 ```{r}
 #| label: condition-table
 #| eval: !expr has_data
@@ -190,7 +221,10 @@ if (has_data && "condition" %in% names(outcomes)) {
 ```
 
 ::: {.callout-note}
-## Data Status
+## Living Review
+
+This page is part of a living systematic review and is updated as new studies are identified, screened, and extracted.
+The data, figures, and pooled estimates will change over time.
 
 ```{r}
 #| label: data-status

@@ -16,14 +16,23 @@ has_data <- nrow(prev_data) > 0
 
 ## Overview
 
-Pooled prevalence estimates for Long COVID and ME/CFS symptoms from population-based and clinical studies.
+Prevalence estimates tell us how common each symptom is among people with Long COVID or ME/CFS.
+These numbers vary enormously across studies -- sometimes by a factor of five or more for the same symptom -- and the reasons matter.
+Studies that recruit from hospital follow-up clinics capture sicker patients than population-based surveys.
+Studies that use stricter diagnostic criteria tend to find higher symptom prevalence within their smaller, more severely affected cohorts.
+The pooled estimates below attempt to account for this heterogeneity, but they should be read as ranges rather than single definitive numbers.
 
 ## Long COVID Symptom Prevalence
+
+Each symptom with at least two contributing studies gets a pooled estimate using a random-effects meta-analysis of proportions.
+The confidence intervals reflect both within-study sampling error and between-study heterogeneity.
+Wide intervals are the norm here -- they reflect genuine variation in who gets studied and how symptoms are measured.
 
 ```{r}
 #| label: lc-prevalence
 #| eval: !expr has_data
-#| fig-cap: "Pooled prevalence of Long COVID symptoms"
+#| fig-cap: "Pooled prevalence of Long COVID symptoms with 95% confidence intervals from random-effects meta-analysis."
+#| fig-alt: "Text output showing pooled prevalence percentages and confidence intervals for each Long COVID symptom that has at least two contributing studies."
 lc <- prev_data[prev_data$condition == "long_covid", ]
 
 if (nrow(lc) >= 2) {
@@ -45,10 +54,14 @@ if (nrow(lc) >= 2) {
 
 ## ME/CFS Symptom Prevalence
 
+ME/CFS prevalence data comes from a longer research history, but sample sizes tend to be smaller and diagnostic criteria vary more widely.
+The forest plot below shows individual study estimates alongside the pooled result.
+
 ```{r}
 #| label: mecfs-prevalence
 #| eval: !expr has_data
-#| fig-cap: "Pooled prevalence of ME/CFS symptoms"
+#| fig-cap: "Forest plot of ME/CFS symptom prevalence estimates with pooled random-effects summary."
+#| fig-alt: "Forest plot showing individual study prevalence estimates for ME/CFS symptoms as points with confidence interval whiskers, ordered vertically by study."
 mecfs <- prev_data[prev_data$condition == "mecfs", ]
 if (nrow(mecfs) >= 2) {
   fit_mecfs <- run_prevalence_meta(mecfs)
@@ -58,10 +71,14 @@ if (nrow(mecfs) >= 2) {
 
 ## By Timepoint
 
+Symptom prevalence can change over time -- some symptoms resolve, others emerge months after the initial infection.
+Tracking prevalence by months post-infection reveals which symptoms are transient and which persist.
+
 ```{r}
 #| label: prevalence-time
 #| eval: !expr has_data
-#| fig-cap: "Symptom prevalence by months post-infection"
+#| fig-cap: "Symptom prevalence estimates plotted by months post-infection to reveal temporal patterns."
+#| fig-alt: "Scatter plot of symptom prevalence on the y-axis against months post-infection on the x-axis, showing how prevalence changes over time."
 if (has_data && any(!is.na(prev_data$timepoint_months))) {
   cat("*Prevalence estimates over time will appear here once sufficient data is extracted.*\n")
 }
@@ -76,7 +93,11 @@ cat("*Accessible prevalence visualisations for non-specialist audiences.*\n")
 ```
 
 ::: {.callout-note}
-## Data Status
+## Living Review
+
+This page is part of a living systematic review and is updated as new studies are identified, screened, and extracted.
+The data, figures, and pooled estimates will change over time.
+Prevalence ranges are expected to narrow as more studies are added.
 
 ```{r}
 #| label: data-status

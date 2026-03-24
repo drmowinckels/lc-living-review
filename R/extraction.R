@@ -283,6 +283,247 @@
   "perceived exertion"                  = "anxiety"
 )
 
+.intervention_category_map <- c(
+  "cbt" = "CBT",
+  "group cbt" = "CBT",
+  "i-cbt" = "CBT",
+  "cbt (internet-based)" = "CBT",
+  "cbt (all forms)" = "CBT",
+  "cbt (group face-to-face)" = "CBT",
+  "cbt (individual face-to-face)" = "CBT",
+  "cbt for fatigue" = "CBT",
+  "cbt-act" = "CBT",
+  "cbt-f" = "CBT",
+  "cbt-i" = "CBT",
+  "cbt-related treatments" = "CBT",
+  "individually tailored icbt" = "CBT",
+  "internet-based cbt (imp-fitnet)" = "CBT",
+  "individual face-to-face cbt" = "CBT",
+  "self-directed cbt" = "CBT",
+  "fit after covid (cbt)" = "CBT",
+  "iact + tau" = "CBT",
+  "v-cbsm" = "CBT",
+
+  "get" = "Graded Exercise Therapy",
+  "graded exercise therapy" = "Graded Exercise Therapy",
+  "graded exercise therapy (get)" = "Graded Exercise Therapy",
+  "graded-exercise-related therapies" = "Graded Exercise Therapy",
+  "guided graded exercise self-help (ges)" = "Graded Exercise Therapy",
+  "individualised symptom-titrated exercise" = "Graded Exercise Therapy",
+  "symptom-titrated exercise rehabilitation programme" = "Graded Exercise Therapy",
+  "individualized controlled exercise" = "Graded Exercise Therapy",
+
+  "act" = "ACT",
+  "video-based case conceptualization + web-based act + tau" = "ACT",
+
+  "exercise therapy" = "Exercise",
+  "aerobic exercise training" = "Exercise",
+  "conventional exercise therapy" = "Exercise",
+  "conventional exercise therapy (aerobic)" = "Exercise",
+  "exercise rehabilitation" = "Exercise",
+  "exercise-based therapies" = "Exercise",
+  "resistance exercise" = "Exercise",
+  "resistance training" = "Exercise",
+  "semi-supervised exercise program" = "Exercise",
+  "self-paced aquatic exercise" = "Exercise",
+  "unsupervised aerobic exercise training" = "Exercise",
+  "eccentric cycling (ecc)" = "Exercise",
+  "supervised multicomponent exercise (concurrent training)" = "Exercise",
+  "multicomponent training (balance/aerobic/resistance)" = "Exercise",
+  "physical activity (active subjects)" = "Exercise",
+  "physical exercise via covidreapp" = "Exercise",
+  "fatiguewalk" = "Exercise",
+
+  "pulmonary rehabilitation" = "Pulmonary Rehabilitation",
+  "in-patient pulmonary rehabilitation" = "Pulmonary Rehabilitation",
+  "respiratory telerehabilitation" = "Pulmonary Rehabilitation",
+  "respiratory muscle training" = "Pulmonary Rehabilitation",
+  "aerobic exercise + respiratory muscle training" = "Pulmonary Rehabilitation",
+  "pulmonary rehabilitation + progressive muscle relaxation" = "Pulmonary Rehabilitation",
+  "pulmonary rehabilitation / respiratory muscle training" = "Pulmonary Rehabilitation",
+
+  "rehabilitation interventions" = "Rehabilitation",
+  "inpatient rehabilitation" = "Rehabilitation",
+  "inpatient post-covid rehabilitation" = "Rehabilitation",
+  "multidisciplinary hospital-based rehabilitation" = "Rehabilitation",
+  "multidisciplinary group telerehabilitation" = "Rehabilitation",
+  "multidisciplinary indoor rehabilitation" = "Rehabilitation",
+  "multidisciplinary outpatient rehabilitation" = "Rehabilitation",
+  "multimodal post-covid rehabilitation" = "Rehabilitation",
+  "rehabilitation (any form targeting post-covid)" = "Rehabilitation",
+  "physical and mental health rehabilitation programme" = "Rehabilitation",
+  "spa resort rehabilitation program" = "Rehabilitation",
+
+  "mindfulness-based stress reduction" = "Mindfulness",
+  "online mindfulness-based stress reduction (mbsr)" = "Mindfulness",
+  "online mindful walking" = "Mindfulness",
+  "tele-mindfulness based intervention" = "Mindfulness",
+  "mindfulness program" = "Mindfulness",
+
+  "qigong" = "Qigong/Tai Chi",
+  "tcme (qigong/tai chi)" = "Qigong/Tai Chi",
+  "daoyin (traditional chinese exercise)" = "Qigong/Tai Chi",
+  "prolong life with nine turn (plwnt) qigong" = "Qigong/Tai Chi",
+  "plwnt qigong" = "Qigong/Tai Chi",
+  "qigong tuina therapy" = "Qigong/Tai Chi",
+
+  "yoga" = "Yoga",
+  "tele-yoga" = "Yoga",
+  "recumbent isometric yoga" = "Yoga",
+  "recumbent isometric yoga + conventional therapy" = "Yoga",
+  "remote yoga and self-management" = "Yoga",
+  "vr-enhanced mindfulness and yoga" = "Yoga",
+  "ai chi" = "Yoga",
+
+  "pacing strategies" = "Pacing",
+  "pacing" = "Pacing",
+  "pacing interventions (video, app, book)" = "Pacing",
+  "who borg cr-10 pacing protocol" = "Pacing",
+  "structured who borg cr-10 5-phase pacing protocol" = "Pacing",
+
+  "occupational therapy" = "Occupational Therapy",
+  "online occupational therapy (prerecorded videos)" = "Occupational Therapy",
+  "online occupational therapy (teletherapy)" = "Occupational Therapy",
+
+  "ldn" = "Low-Dose Naltrexone",
+  "low-dose naltrexone (ldn)" = "Low-Dose Naltrexone",
+  "low dose naltrexone (ldn)" = "Low-Dose Naltrexone",
+  "low-dose naltrexone" = "Low-Dose Naltrexone",
+
+  "nirmatrelvir" = "Nirmatrelvir/Ritonavir",
+  "nirmatrelvir-ritonavir" = "Nirmatrelvir/Ritonavir",
+  "nirmatrelvir/ritonavir" = "Nirmatrelvir/Ritonavir",
+
+  "fluvoxamine" = "Fluvoxamine",
+  "fluoxetine" = "SSRIs",
+  "ssris" = "SSRIs",
+
+  "covid-19 vaccination" = "COVID-19 Vaccination",
+  "full vaccination" = "COVID-19 Vaccination",
+  "sars-cov-2 vaccination" = "COVID-19 Vaccination",
+  "covid vaccination (1 dose)" = "COVID-19 Vaccination",
+  "covid vaccination (2 doses)" = "COVID-19 Vaccination",
+  "covid vaccination (3 doses)" = "COVID-19 Vaccination",
+  "covid vaccination (4 doses)" = "COVID-19 Vaccination",
+
+  "coq10 plus nadh" = "CoQ10/NADH",
+  "coq10 + selenium" = "CoQ10/NADH",
+  "coenzyme q10" = "CoQ10/NADH",
+  "nadh" = "CoQ10/NADH",
+
+  "creatine monohydrate" = "Creatine",
+  "creatine supplementation + breathing exercises" = "Creatine",
+
+  "nicotinamide riboside (nr)" = "Nicotinamide Riboside",
+
+  "therapeutic apheresis" = "Apheresis",
+  "therapeutic plasmapheresis" = "Apheresis",
+  "immunoadsorption" = "Apheresis",
+  "immunoadsorption (repeat)" = "Apheresis",
+
+  "repetitive transcranial magnetic stimulation" = "Brain Stimulation",
+  "high-frequency rtms to dlpfc" = "Brain Stimulation",
+  "anodal transcranial direct current stimulation (tdcs)" = "Brain Stimulation",
+  "tdcs + brainhq" = "Brain Stimulation",
+
+  "intermittent hypoxia exposure (ihe)" = "Hypoxia Therapy",
+  "intermittent hypoxia-hyperoxia conditioning (ihhc)" = "Hypoxia Therapy",
+
+  "major ozone autohemotherapy" = "Ozone Therapy",
+  "oxygen-ozone autohemotherapy (o2-o3-aht)" = "Ozone Therapy",
+
+  "multi-strain probiotic" = "Probiotics",
+  "oral bacteriotherapy (probiotics)" = "Probiotics",
+
+  "metformin" = "Metformin",
+  "rapamycin" = "Rapamycin",
+  "methylphenidate" = "Methylphenidate",
+  "dexamphetamine" = "Dexamphetamine",
+  "minocycline" = "Minocycline",
+  "hydrocortisone" = "Hydrocortisone",
+  "mirtazapine" = "Mirtazapine",
+  "pirfenidone" = "Pirfenidone"
+)
+
+harmonize_intervention <- function(x) {
+  x_clean <- tolower(trimws(x))
+  bogus <- x_clean %in% c("false", "true", "na", "n/a", "none", "null",
+                           "unknown", "not reported", "")
+  x[bogus] <- NA_character_
+  mapped <- .intervention_category_map[x_clean]
+  x[!is.na(mapped)] <- mapped[!is.na(mapped)]
+  x
+}
+
+.outcome_measure_map <- c(
+  "sf-36 physical function"            = "SF-36 Physical Functioning",
+  "sf-36 physical functioning"         = "SF-36 Physical Functioning",
+  "sf-36 physical function (sf36-pf)"  = "SF-36 Physical Functioning",
+  "sf36-pf"                            = "SF-36 Physical Functioning",
+  "sf-36"                              = "SF-36",
+  "sf-12"                              = "SF-12",
+  "eq-5d-5l"                           = "EQ-5D-5L",
+  "eq-5d"                              = "EQ-5D-5L",
+  "6mwt"                               = "6-Minute Walk Test",
+  "6-minute walk test"                 = "6-Minute Walk Test",
+  "6-minute walking test (6mwt)"       = "6-Minute Walk Test",
+  "6-minute walk test (6mwt)"          = "6-Minute Walk Test",
+  "6mwd"                               = "6-Minute Walk Test",
+  "chalder fatigue scale"              = "Chalder Fatigue Scale",
+  "chalder fatigue questionnaire"      = "Chalder Fatigue Scale",
+  "chalder fatigue scale (cfs)"        = "Chalder Fatigue Scale",
+  "fatigue severity scale"             = "Fatigue Severity Scale",
+  "fatigue severity scale (fss)"       = "Fatigue Severity Scale",
+  "fss"                                = "Fatigue Severity Scale",
+  "fatigue assessment scale"           = "Fatigue Assessment Scale",
+  "fatigue assessment scale (fas)"     = "Fatigue Assessment Scale",
+  "fatigue assessment scale (fas) total" = "Fatigue Assessment Scale",
+  "fas"                                = "Fatigue Assessment Scale",
+  "facit-fatigue"                      = "FACIT-Fatigue",
+  "facit fatigue"                      = "FACIT-Fatigue",
+  "facit fatigue scale"                = "FACIT-Fatigue",
+  "mfi-20"                             = "MFI-20",
+  "mfi-20 general fatigue"             = "MFI-20 General Fatigue",
+  "mfi-20 mental fatigue"              = "MFI-20 Mental Fatigue",
+  "cis-fatigue"                        = "CIS-Fatigue",
+  "checklist individual strength, subscale fatigue severity" = "CIS-Fatigue",
+  "phq-9"                              = "PHQ-9",
+  "gad-7"                              = "GAD-7",
+  "hads"                               = "HADS",
+  "hads anxiety"                       = "HADS-Anxiety",
+  "hads depression"                    = "HADS-Depression",
+  "dass-21"                            = "DASS-21",
+  "dass-21 (depression anxiety stress scales)" = "DASS-21",
+  "beck depression inventory"          = "Beck Depression Inventory",
+  "beck depression inventory ii (bdi-ii)" = "Beck Depression Inventory",
+  "bdi-ii"                             = "Beck Depression Inventory",
+  "psqi"                               = "PSQI",
+  "insomnia severity index"            = "Insomnia Severity Index",
+  "insomnia severity index (isi)"      = "Insomnia Severity Index",
+  "gses"                               = "GSES",
+  "sss-8"                              = "SSS-8",
+  "brief fatigue inventory"            = "Brief Fatigue Inventory",
+  "pain visual analogue scale"         = "Pain VAS",
+  "pain vas"                           = "Pain VAS",
+  "vas fatigue"                        = "Fatigue VAS",
+  "fatigue vas"                        = "Fatigue VAS",
+  "vas pain"                           = "Pain VAS",
+  "total fatigue score"                = "Total Fatigue Score",
+  "moca"                               = "MoCA",
+  "performance status (ps)"            = "Performance Status",
+  "qalys"                              = "QALYs"
+)
+
+harmonize_outcome_measure <- function(x) {
+  x_clean <- tolower(trimws(x))
+  bogus <- x_clean %in% c("false", "true", "na", "n/a", "none", "null",
+                           "unknown", "not reported", "")
+  x[bogus] <- NA_character_
+  mapped <- .outcome_measure_map[x_clean]
+  x[!is.na(mapped)] <- mapped[!is.na(mapped)]
+  x
+}
+
 harmonize_outcome_domain <- function(x) {
   x <- tolower(trimws(x))
   bogus <- x %in% c("false", "true", "na", "n/a", "none", "null", "unknown", "not reported", "")
@@ -301,9 +542,23 @@ sanitize_extracted <- function(df) {
   for (col in char_cols) {
     df[[col]][tolower(trimws(df[[col]])) %in% bogus_vals] <- NA_character_
   }
+  if (all(c("effect_size", "ci_lower", "ci_upper") %in% names(df))) {
+    bogus_es <- !is.na(df$effect_size) & df$effect_size == 0 &
+                !is.na(df$ci_lower) & df$ci_lower == 0 &
+                !is.na(df$ci_upper) & df$ci_upper == 0
+    df$effect_size[bogus_es] <- NA_real_
+    df$ci_lower[bogus_es] <- NA_real_
+    df$ci_upper[bogus_es] <- NA_real_
+  }
   if ("outcome_domain" %in% names(df)) {
     df$outcome_domain_raw <- df$outcome_domain
     df$outcome_domain <- harmonize_outcome_domain(df$outcome_domain)
+  }
+  if ("outcome_measure" %in% names(df)) {
+    df$outcome_measure <- harmonize_outcome_measure(df$outcome_measure)
+  }
+  if ("intervention" %in% names(df)) {
+    df$intervention_category <- harmonize_intervention(df$intervention)
   }
   df
 }

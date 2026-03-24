@@ -23,7 +23,12 @@ has_both <- has_cbt && has_biomed
 
 ## Overview
 
-This page directly compares the published research on **psychological/behavioural interventions** (CBT, GET, self-management) with **biomedical interventions** (pharmacological, immunological, device-based) for Long COVID and ME/CFS.
+Psychological and biomedical treatments for Long COVID and ME/CFS come from fundamentally different research traditions.
+Psychological interventions -- CBT, graded exercise, self-management programmes -- typically assume that illness perpetuation involves cognitive or behavioural factors.
+Biomedical interventions -- pharmacological agents, immunomodulators, device-based therapies -- target underlying physiological mechanisms directly.
+These different starting assumptions shape which outcomes researchers measure, which study designs they favour, and how they interpret results.
+
+This page puts those two traditions side by side so you can see where they converge and where they diverge.
 
 The comparison covers:
 
@@ -52,8 +57,13 @@ if (nrow(treatment_studies) > 0) {
 
 ## Publication Trends {#sec-trends}
 
+Publication timelines reveal which paradigm has attracted more research attention and when.
+A surge in biomedical publications after 2020 would suggest that Long COVID shifted funding priorities toward mechanistic research.
+Conversely, a steady psychological output alongside that surge would indicate the two traditions are growing in parallel rather than one replacing the other.
+
 ```{r}
 #| label: publication-timeline
+#| fig-alt: "Line chart showing number of published studies per year, with separate lines for psychological/behavioural and biomedical treatment paradigms."
 #| fig-cap: "Number of studies published per year by treatment paradigm"
 all_treatment <- studies |>
   dplyr::filter(
@@ -86,6 +96,11 @@ if (nrow(all_treatment) > 0) {
 
 ## Study Design Comparison {#sec-designs}
 
+Study design choices matter because they determine how much confidence we can place in the results.
+Randomised controlled trials provide the strongest causal evidence, but they are harder to run for some interventions than others.
+Biomedical research often relies on small pilot trials or case series early in development, while psychological interventions have a longer history of large-scale RCTs (particularly in the ME/CFS literature).
+Comparing the design distributions helps explain why evidence quality may differ between paradigms.
+
 ```{r}
 #| label: design-data
 #| include: false
@@ -104,6 +119,7 @@ if (nrow(all_treatment) > 0) {
 #| label: design-comparison
 #| eval: !expr '!is.null(design_counts)'
 #| fig-height: !expr design_h
+#| fig-alt: "Horizontal bar chart comparing the number of studies using each study design, grouped by psychological/behavioural vs biomedical paradigm."
 #| fig-cap: "Study designs used in psychological vs biomedical treatment research"
 ggplot(design_counts, aes(x = reorder(Design, n), y = n, fill = Paradigm)) +
   geom_col(position = "dodge") +
@@ -118,6 +134,11 @@ ggplot(design_counts, aes(x = reorder(Design, n), y = n, fill = Paradigm)) +
 ```
 
 ## Effect Size Comparison {#sec-effects}
+
+The forest plot below pools effect sizes from both paradigms on a single scale (Hedges' g).
+This is informative but requires a caveat: combining psychological and biomedical trials mixes very different interventions, populations, and control conditions.
+A small overall effect from one paradigm does not mean every intervention in that paradigm is weak -- it may reflect wider variation in what "treatment" and "control" mean.
+Read the individual study labels to understand what each point estimate actually represents.
 
 ```{r}
 #| label: effect-data
@@ -184,6 +205,7 @@ if (has_both) {
 #| label: effect-comparison
 #| eval: !expr '!is.null(forest_fit)'
 #| fig-height: !expr forest_h
+#| fig-alt: "Forest plot displaying Hedges' g effect sizes for individual studies, grouped by psychological/behavioural and biomedical treatment paradigm, with pooled diamond estimates."
 #| fig-cap: "Pooled effect sizes (Hedges' g) by treatment paradigm"
 forest_gg(forest_fit, title = "Treatment Effects by Paradigm")
 ```
@@ -192,6 +214,8 @@ forest_gg(forest_fit, title = "Treatment Effects by Paradigm")
 #| label: effect-cbt-only
 #| eval: !expr '!is.null(fit_cbt_only)'
 #| fig-height: !expr cbt_h
+#| fig-alt: "Forest plot of Hedges' g effect sizes for psychological and behavioural intervention studies only."
+#| fig-cap: "Pooled effect sizes for psychological/behavioural interventions"
 #| results: asis
 cli::cat_line("Only CBT/psychological data available so far \u2014 biomedical comparison pending.")
 forest_gg(fit_cbt_only, title = "Psychological / Behavioural Interventions")
@@ -201,12 +225,19 @@ forest_gg(fit_cbt_only, title = "Psychological / Behavioural Interventions")
 #| label: effect-biomed-only
 #| eval: !expr '!is.null(fit_bio_only)'
 #| fig-height: !expr bio_h
+#| fig-alt: "Forest plot of Hedges' g effect sizes for biomedical intervention studies only."
+#| fig-cap: "Pooled effect sizes for biomedical interventions"
 #| results: asis
 cli::cat_line("Only biomedical data available so far \u2014 psychological comparison pending.")
 forest_gg(fit_bio_only, title = "Biomedical Interventions")
 ```
 
 ## Outcome Measures Used {#sec-outcomes}
+
+The outcome measures each paradigm chooses reveal its assumptions about what matters.
+Psychological trials tend to favour self-report questionnaires for fatigue, mood, and functional capacity.
+Biomedical trials more often include laboratory markers, objective physiological tests, or clinician-rated scales.
+Where the same measure appears in both paradigms, direct comparison becomes more meaningful; where measures diverge, apparent differences in effectiveness may partly reflect measurement culture rather than true treatment differences.
 
 ```{r}
 #| label: outcome-data
@@ -234,6 +265,7 @@ if (has_both && "outcome_measure" %in% names(combined)) {
 #| label: outcome-measures
 #| eval: !expr '!is.null(outcome_counts)'
 #| fig-height: !expr outcome_h
+#| fig-alt: "Horizontal bar chart showing the most frequently used outcome measures, split by psychological/behavioural and biomedical paradigm."
 #| fig-cap: !expr 'if (n_outcome_total > 30) paste0("Top 30 of ", n_outcome_total, " outcome measures by frequency") else "Outcome measures used in psychological vs biomedical research"'
 ggplot(outcome_counts, aes(x = reorder(Measure, n), y = n, fill = Paradigm)) +
   geom_col(position = "dodge") +
@@ -248,6 +280,9 @@ ggplot(outcome_counts, aes(x = reorder(Measure, n), y = n, fill = Paradigm)) +
 ```
 
 ## Evidence Quality {#sec-quality}
+
+Risk of bias ratings tell us how much to trust the results from each paradigm.
+Systematic differences in quality -- for example, if one paradigm consistently lacks blinding or has high attrition -- would mean we should weight its pooled estimates differently.
 
 ```{r}
 #| label: quality-comparison
@@ -276,6 +311,9 @@ if (nrow(treatment_quality) > 0) {
 
 ## Summary Table {#sec-summary}
 
+The table below provides a quick reference for comparing the volume and maturity of evidence in each paradigm.
+Pay attention to the number of RCTs relative to total studies -- a paradigm with many studies but few RCTs has a weaker evidence base than one with a higher proportion of randomised designs.
+
 ```{r}
 #| label: summary-table
 if (nrow(all_treatment) > 0) {
@@ -286,7 +324,7 @@ if (nrow(all_treatment) > 0) {
     dplyr::summarise(
       Studies = dplyr::n(),
       RCTs = sum(is_rct, na.rm = TRUE),
-      `Year range` = paste(range(year, na.rm = TRUE), collapse = "–"),
+      `Year range` = paste(range(year, na.rm = TRUE), collapse = "\u2013"),
       .groups = "drop"
     ) |>
     dplyr::rename(Paradigm = paradigm)

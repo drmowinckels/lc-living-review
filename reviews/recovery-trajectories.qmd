@@ -16,11 +16,17 @@ has_data <- nrow(recovery) > 0
 
 ## Overview
 
-Recovery from Long COVID and ME/CFS is variable, often non-linear, and strongly modulated by the presence of post-exertional malaise (PEM). This section synthesises longitudinal recovery data, stratified by PEM status where available.
+Recovery from Long COVID and ME/CFS is not a straight line from sick to well.
+Many patients experience relapsing-remitting patterns -- feeling better for days or weeks, then crashing after exertion.
+Others plateau at a level of partial recovery that persists for months or years.
+The presence of post-exertional malaise (PEM) is one of the strongest predictors of slower or absent recovery, which is why this section stratifies results by PEM status wherever the data allows.
 
 ## Recovery Rates
 
 ### Overall
+
+The pooled recovery rate below combines all available studies, regardless of how they defined recovery or how long they followed patients.
+This number should be treated as a rough orientation rather than a precise answer.
 
 ```{r}
 #| label: recovery-overall
@@ -44,10 +50,15 @@ if (has_data) {
 
 ### By PEM Status
 
+This is where the data becomes most clinically relevant.
+Patients with PEM consistently show lower recovery rates than those without, often dramatically so.
+If your cohort does not distinguish PEM-positive from PEM-negative patients, its recovery rate is likely an average that obscures two very different trajectories.
+
 ```{r}
 #| label: recovery-pem
 #| eval: !expr has_data
-#| fig-cap: "Recovery rates with and without PEM"
+#| fig-cap: "Recovery rates stratified by PEM status -- the gap between groups reveals how much PEM shapes prognosis."
+#| fig-alt: "Text output showing pooled recovery rate percentages and confidence intervals separately for PEM-positive and PEM-negative patient groups."
 if (has_data && any(!is.na(recovery$pem_status))) {
   pem_recovery <- recovery[!is.na(recovery$pem_status), ]
 
@@ -67,10 +78,15 @@ if (has_data && any(!is.na(recovery$pem_status))) {
 
 ## Recovery Over Time
 
+The trajectory plot below shows recovery rates at different timepoints after infection, with separate trend lines for PEM-positive and PEM-negative groups where data is available.
+Each point is one study's estimate at one timepoint; larger points represent larger samples.
+The smoothed lines (loess fits) show the general trend, but the shaded confidence bands are wide -- treat the direction of the trend as more reliable than the exact position.
+
 ```{r}
 #| label: recovery-trajectory
 #| eval: !expr has_data
-#| fig-cap: "Recovery trajectory by timepoint and PEM status"
+#| fig-cap: "Recovery rate over months post-infection, stratified by PEM status -- diverging lines indicate that PEM-positive patients recover more slowly or not at all."
+#| fig-alt: "Scatter plot with months post-infection on the x-axis and recovery rate (percent) on the y-axis. Points are sized by sample size and coloured by PEM status. Smoothed loess trend lines with shaded confidence bands show the trajectory for each group."
 if (has_data && any(!is.na(recovery$timepoint_months))) {
   trajectory <- recovery[!is.na(recovery$timepoint_months) & !is.na(recovery$recovery_pct), ]
 
@@ -97,10 +113,15 @@ if (has_data && any(!is.na(recovery$timepoint_months))) {
 
 ## Quality of Life Trajectories
 
+Quality of life (QoL) scores complement binary recovery rates by capturing the grey area between full recovery and no improvement.
+A patient who is not "recovered" by any formal definition may still have meaningfully improved quality of life -- or may have worsened.
+The trajectory below shows QoL scores over time, again stratified by PEM status.
+
 ```{r}
 #| label: qol-trajectory
 #| eval: !expr has_data
-#| fig-cap: "Quality of life over time by PEM status"
+#| fig-cap: "Quality of life scores over time by PEM status -- upward trends indicate improvement, flat or downward trends indicate persistent disability."
+#| fig-alt: "Scatter plot with months post-infection on the x-axis and quality of life score on the y-axis. Points are sized by sample size and coloured by PEM status. Smoothed loess trend lines with shaded confidence bands show the trajectory for each group."
 if (has_data && any(!is.na(recovery$qol_score))) {
   qol <- recovery[!is.na(recovery$qol_score), ]
   if (nrow(qol) >= 3) {
@@ -127,7 +148,11 @@ cat("*Accessible recovery trajectory visualisations for non-specialist audiences
 ```
 
 ::: {.callout-note}
-## Data Status
+## Living Review
+
+This page is part of a living systematic review and is updated as new studies are identified, screened, and extracted.
+The data, figures, and pooled estimates will change over time.
+Recovery trajectory estimates are particularly sensitive to new long-term follow-up studies.
 
 ```{r}
 #| label: data-status

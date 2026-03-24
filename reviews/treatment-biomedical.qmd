@@ -20,7 +20,11 @@ has_data <- nrow(effects) > 0
 
 ## Overview
 
-This review covers pharmacological and device-based interventions for Long COVID and ME/CFS, including low-dose naltrexone (LDN), antihistamines, antivirals, immunomodulators, anticoagulants, apheresis, and nutritional supplements.
+Biomedical interventions for Long COVID and ME/CFS span a wide range — from repurposed pharmaceuticals like low-dose naltrexone and antivirals, to nutritional supplements like CoQ10 and creatine, to procedural treatments like apheresis and transcranial stimulation.
+
+The evidence is growing fast but remains fragmented.
+Most studies are small, many lack placebo controls, and the interventions target different mechanisms entirely.
+Pooling across such different treatments is statistically possible but clinically questionable, so we present both the overall picture and domain-specific breakdowns below.
 
 ```{r}
 #| label: included-studies
@@ -39,58 +43,70 @@ if (nrow(topic_studies) > 0) {
 }
 ```
 
-## Effect Sizes {#sec-effects}
+## Effects by Intervention {#sec-effects-intervention}
+
+Pooling LDN with nirmatrelvir with creatine into a single number would be meaningless.
+The plot below shows a separate pooled estimate for each intervention category — answering the question "what does the evidence say about _this specific_ treatment?"
 
 ```{r}
 #| label: forest-data
 #| include: false
-forest_fit <- NULL
-forest_h <- 6
-if (has_data && all(c("mean_intervention", "sd_intervention", "n_intervention",
-                      "mean_comparator", "sd_comparator", "n_comparator") %in% names(effects))) {
-  complete <- effects |>
-    dplyr::filter(
-      !is.na(mean_intervention), !is.na(mean_comparator),
-      !is.na(sd_intervention), !is.na(sd_comparator),
-      !is.na(n_intervention), !is.na(n_comparator),
-      n_intervention > 0, n_comparator > 0,
-      sd_intervention > 0, sd_comparator > 0
-    ) |>
-    dplyr::rename(
-      mean_treatment = mean_intervention,
-      sd_treatment   = sd_intervention,
-      n_treatment    = n_intervention,
-      mean_control   = mean_comparator,
-      sd_control     = sd_comparator,
-      n_control      = n_comparator
-    ) |>
-    dplyr::mutate(study_label = study_id)
-  if (nrow(complete) >= 2) {
-    es <- compute_effect_sizes(complete, outcome_type = "continuous")
-    forest_fit <- run_meta(es)
-    forest_h <- forest_height(forest_fit$k)
-  }
+forest_df <- if (has_data) prepare_forest_data(effects) else data.frame()
+has_forest <- nrow(forest_df) >= 2
+intervention_forest_h <- 6
+domain_forest_h <- 6
+if (has_forest && "intervention_category" %in% names(forest_df)) {
+  n_int <- length(unique(forest_df$intervention_category[!is.na(forest_df$intervention_category)]))
+  intervention_forest_h <- bar_height(n_int)
+}
+if (has_forest && "outcome_domain" %in% names(forest_df)) {
+  n_dom <- length(unique(forest_df$outcome_domain[!is.na(forest_df$outcome_domain)]))
+  domain_forest_h <- bar_height(n_dom)
 }
 ```
 
 ```{r}
-#| label: forest-plot
-#| eval: !expr '!is.null(forest_fit)'
-#| fig-height: !expr forest_h
-#| fig-cap: "Effect sizes for biomedical interventions (positive = benefit)"
-forest_gg(forest_fit, title = "Biomedical Interventions")
+#| label: intervention-forest
+#| eval: !expr 'has_forest && "intervention_category" %in% names(forest_df)'
+#| fig-height: !expr intervention_forest_h
+#| fig-alt: "Forest plot showing pooled effect sizes for each biomedical intervention category, with diamond size proportional to the number of contributing studies"
+#| fig-cap: "Pooled effect sizes by intervention. Each row is a separate random-effects meta-analysis. Larger diamonds indicate more contributing study–outcome pairs."
+subgroup_forest(
+  forest_df, group_col = "intervention_category",
+  title = "Pooled effects by intervention"
+)
+```
+
+## Effects by Outcome Domain {#sec-effects-domain}
+
+Same evidence, different cut.
+This groups by what was measured — fatigue, cognition, pain — regardless of which drug or supplement was used.
+Useful for asking: "across all biomedical approaches, which symptoms are most responsive to treatment?"
+
+```{r}
+#| label: domain-forest
+#| eval: !expr 'has_forest && "outcome_domain" %in% names(forest_df)'
+#| fig-height: !expr domain_forest_h
+#| fig-alt: "Forest plot showing pooled effect sizes for each outcome domain across biomedical interventions"
+#| fig-cap: "Pooled effect sizes by outcome domain. Each row pools all biomedical interventions that measured that domain."
+subgroup_forest(
+  forest_df, group_col = "outcome_domain",
+  title = "Pooled effects by outcome domain"
+)
 ```
 
 ## Interventions {#sec-interventions}
 
+The table below groups specific drugs, supplements, and procedures into broader categories.
+Low-dose naltrexone and nirmatrelvir/ritonavir have the most reported outcomes, though many of those come from observational rather than randomised studies.
+
 ```{r}
 #| label: intervention-table
 #| eval: !expr has_data
-if (has_data && "intervention" %in% names(effects)) {
+if (has_data && "intervention_category" %in% names(effects)) {
   int_counts <- effects |>
-    dplyr::filter(!is.na(intervention)) |>
-    dplyr::count(intervention) |>
-    dplyr::arrange(dplyr::desc(n))
+    dplyr::filter(!is.na(intervention_category)) |>
+    dplyr::count(intervention_category, sort = TRUE)
   if (nrow(int_counts) > 0) {
     names(int_counts) <- c("Intervention", "Effect Sizes")
     display_table(int_counts)
@@ -98,15 +114,127 @@ if (has_data && "intervention" %in% names(effects)) {
 }
 ```
 
+## Outcome Measures {#sec-outcomes}
+
+As with psychological interventions, outcome measurement varies widely.
+The table below maps each instrument to its domain — making it easier to spot that, for example, three different fatigue scales are measuring the same underlying construct.
+
+```{r}
+#| label: outcome-table
+#| eval: !expr has_data
+if (has_data && "outcome_measure" %in% names(effects)) {
+  out_counts <- effects |>
+    dplyr::filter(!is.na(outcome_measure)) |>
+    dplyr::mutate(
+      domain = dplyr::coalesce(outcome_domain, "other")
+    ) |>
+    dplyr::count(domain, outcome_measure, sort = TRUE)
+  if (nrow(out_counts) > 0) {
+    names(out_counts) <- c("Domain", "Outcome Measure", "N")
+    display_table(out_counts)
+  }
+}
+```
+
+## Outcomes by Domain {#sec-domains}
+
+Grouping by outcome domain cuts through the instrument heterogeneity.
+The bar chart shows where the evidence concentrates; the summary table pools effect sizes within each domain.
+
+High I^2^ values indicate substantial heterogeneity within a domain — expected, given how different the interventions are.
+
+```{r}
+#| label: domain-bar-data
+#| include: false
+domain_df <- NULL
+domain_h <- 4
+if (has_data && "outcome_domain" %in% names(effects)) {
+  domain_df <- effects |>
+    dplyr::filter(!is.na(outcome_domain)) |>
+    dplyr::count(outcome_domain, sort = TRUE) |>
+    dplyr::mutate(outcome_domain = factor(outcome_domain, levels = rev(outcome_domain)))
+  domain_h <- bar_height(nrow(domain_df))
+}
+```
+
+```{r}
+#| label: domain-bar
+#| eval: !expr '!is.null(domain_df) && nrow(domain_df) > 0'
+#| fig-height: !expr domain_h
+#| fig-alt: "Horizontal bar chart showing the number of extracted effect sizes per outcome domain for biomedical interventions"
+#| fig-cap: "Distribution of effect sizes across outcome domains. Fatigue dominates, reflecting both clinical priority and measurement availability."
+ggplot(domain_df, aes(x = n, y = outcome_domain)) +
+  geom_col(fill = cols_review["clinical"], width = 0.7) +
+  geom_text(aes(label = n), hjust = -0.2, size = 3.5) +
+  scale_x_continuous(expand = expansion(mult = c(0, 0.15))) +
+  labs(x = "Effect sizes", y = NULL) +
+  theme_review
+```
+
+```{r}
+#| label: domain-forest-data
+#| include: false
+domain_fits <- list()
+domain_forest_h <- 6
+if (has_data && all(c("mean_intervention", "sd_intervention", "n_intervention",
+                      "mean_comparator", "sd_comparator", "n_comparator",
+                      "outcome_domain") %in% names(effects))) {
+  for (dom in unique(effects$outcome_domain[!is.na(effects$outcome_domain)])) {
+    dom_data <- effects |>
+      dplyr::filter(
+        outcome_domain == dom,
+        !is.na(mean_intervention), !is.na(mean_comparator),
+        !is.na(sd_intervention), !is.na(sd_comparator),
+        !is.na(n_intervention), !is.na(n_comparator),
+        n_intervention > 0, n_comparator > 0,
+        sd_intervention > 0, sd_comparator > 0
+      ) |>
+      dplyr::rename(
+        mean_treatment = mean_intervention, sd_treatment = sd_intervention,
+        n_treatment = n_intervention, mean_control = mean_comparator,
+        sd_control = sd_comparator, n_control = n_comparator
+      ) |>
+      dplyr::mutate(study_label = paste0(study_id, ": ", outcome_measure))
+    if (nrow(dom_data) >= 2) {
+      es <- compute_effect_sizes(dom_data, outcome_type = "continuous")
+      domain_fits[[dom]] <- run_meta(es)
+    }
+  }
+  if (length(domain_fits) > 0) {
+    total_k <- sum(vapply(domain_fits, \(f) f$k, integer(1)))
+    domain_forest_h <- forest_height(total_k + length(domain_fits))
+  }
+}
+```
+
+```{r}
+#| label: domain-summary-table
+#| eval: !expr 'length(domain_fits) > 0'
+domain_summary <- purrr::imap_dfr(domain_fits, \(fit, dom) {
+  data.frame(
+    Domain = dom,
+    k = fit$k,
+    SMD = round(coef(fit), 2),
+    CI = paste0("[", round(fit$ci.lb, 2), ", ", round(fit$ci.ub, 2), "]"),
+    p = formatC(fit$pval, format = "g", digits = 3),
+    I2 = paste0(round(fit$I2, 1), "%")
+  )
+}) |> dplyr::arrange(SMD)
+display_table(domain_summary)
+```
+
 ## Dosing & Protocol {#sec-dose}
+
+Dosing information matters for biomedical interventions in a way it does not for CBT.
+The table below lists each study's reported dose or protocol, grouped by intervention category.
 
 ```{r}
 #| label: dose-table
 #| eval: !expr has_data
 if (has_data && "dose" %in% names(effects)) {
   dose_df <- effects |>
-    dplyr::filter(!is.na(dose), !is.na(intervention)) |>
-    dplyr::select(study_id, intervention, dose) |>
+    dplyr::filter(!is.na(dose), !is.na(intervention_category)) |>
+    dplyr::select(study_id, intervention_category, dose) |>
     dplyr::distinct()
   if (nrow(dose_df) > 0) {
     names(dose_df) <- c("Study", "Intervention", "Dose / Protocol")
@@ -116,6 +244,9 @@ if (has_data && "dose" %in% names(effects)) {
 ```
 
 ## PEM Assessment {#sec-pem}
+
+Post-exertional malaise (PEM) is the hallmark symptom of ME/CFS and a defining feature of Long COVID for many patients.
+Whether a biomedical trial assessed PEM matters less for safety than in exercise trials, but it is still relevant — some pharmacological interventions aim specifically to reduce PEM, and knowing whether they measured it tells us whether they could detect their own target outcome.
 
 ```{r}
 #| label: pem-status
@@ -129,6 +260,8 @@ if (has_data && "pem_assessed" %in% names(effects)) {
 ```
 
 ## Risk of Bias {#sec-rob}
+
+Risk of bias ratings follow the Cochrane ROB2 tool for RCTs and ROBINS-I for observational studies.
 
 ```{r}
 #| label: rob-summary
@@ -144,6 +277,10 @@ if (nrow(biomed_quality) > 0) {
 ```
 
 ## Adverse Events {#sec-safety}
+
+Adverse event reporting is inconsistent.
+Some studies report detailed safety data; many say nothing at all.
+Absence of adverse event reporting does not mean absence of adverse events.
 
 ```{r}
 #| label: adverse-events
@@ -176,4 +313,7 @@ if (!has_data) {
   cli::cat_line(glue::glue("{nrow(effects)} effect sizes from {n_studies} studies."))
 }
 ```
+
+This is a living review.
+Data is extracted automatically from published studies and updated as new evidence becomes available.
 :::

@@ -17,6 +17,10 @@ has_data <- nrow(effects) > 0
 
 ## Overview
 
+Pooling treatment effects across heterogeneous interventions -- pacing alongside pharmacology, CBT alongside supplements -- gives a bird's-eye view of the field, but it is deliberately broad.
+The pooled estimate answers a general question: across everything that has been tried, is there a detectable signal of benefit?
+That number matters less than the variation around it: high heterogeneity tells us that "what works" depends heavily on which intervention, which population, and which outcome you look at.
+
 This review examines the comparative effectiveness of interventions for Long COVID and ME/CFS, including:
 
 - **Pacing / energy management** vs usual care or other active interventions
@@ -25,7 +29,7 @@ This review examines the comparative effectiveness of interventions for Long COV
 - **Pharmacological interventions** (LDN, antihistamines, beta-blockers, etc.)
 - **Supplements** (CoQ10, NAD+, etc.)
 
-Clinical and patient-reported outcome studies are analysed separately.
+Clinical and patient-reported outcome studies are analysed separately because they answer different questions and carry different biases.
 
 ```{r}
 #| label: included-studies
@@ -36,15 +40,20 @@ cat(sprintf("**%d studies included** in treatment effectiveness review.\n", nrow
 
 ## Clinical Studies {#sec-clinical}
 
+Clinical outcomes -- measured by clinicians, laboratory tests, or objective performance assessments -- tend to be less susceptible to expectation bias than self-report measures.
+When a treatment shows an effect on clinical outcomes, it provides stronger evidence that something physiological is changing.
+The forest plot below displays individual study effects alongside the pooled estimate, so you can see both the overall signal and how much studies disagree.
+
 ```{r}
 #| label: forest-clinical
 #| eval: !expr has_data
+#| fig-alt: "Forest plot showing Hedges' g effect sizes for individual clinical studies, with a pooled diamond estimate at the bottom."
 #| fig-cap: "Forest plot of treatment effects from clinical studies (Hedges' g)"
 clinical <- effects[effects$reporting_type == "clinical", ]
 if (nrow(clinical) >= 2) {
   es <- compute_effect_sizes(clinical, outcome_type = "continuous")
   fit <- run_meta(es)
-  forest_gg(fit, title = "Treatment Effects — Clinical Studies")
+  forest_gg(fit, title = "Treatment Effects \u2014 Clinical Studies")
 }
 ```
 
@@ -54,7 +63,7 @@ if (nrow(clinical) >= 2) {
 if (nrow(clinical) >= 2) {
   het <- heterogeneity_summary(fit)
   cat(sprintf(
-    "**Heterogeneity**: Q(%d) = %.1f, p = %.3f; I² = %.1f%%; τ² = %.3f\n",
+    "**Heterogeneity**: Q(%d) = %.1f, p = %.3f; I\u00b2 = %.1f%%; \u03c4\u00b2 = %.3f\n",
     het$Q_df, het$Q, het$Q_p, het$I2, het$tau2
   ))
 }
@@ -62,9 +71,14 @@ if (nrow(clinical) >= 2) {
 
 ### Subgroup: By PEM Status
 
+Post-exertional malaise (PEM) is a cardinal feature of ME/CFS and common in Long COVID.
+Trials that confirm PEM in their participants may be studying a biologically distinct population.
+If PEM-confirmed cohorts respond differently to treatment -- especially to exercise-based interventions -- that tells us PEM status should be a standard stratification variable in future trials.
+
 ```{r}
 #| label: subgroup-pem-clinical
 #| eval: !expr has_data
+#| fig-alt: "Forest plot of treatment effects stratified by whether the study population had confirmed post-exertional malaise."
 #| fig-cap: "Treatment effects stratified by PEM status"
 if (nrow(clinical) >= 2 && any(!is.na(clinical$pem_status))) {
   fit_sub <- run_subgroup_meta(es, moderator = "pem_status")
@@ -74,15 +88,20 @@ if (nrow(clinical) >= 2 && any(!is.na(clinical$pem_status))) {
 
 ## Patient-Reported Studies {#sec-patient-reported}
 
+Patient-reported outcomes capture what matters most to the people living with these conditions: fatigue severity, functional capacity, quality of life.
+They are also more vulnerable to placebo effects and unblinding, which is why we analyse them separately from clinical measures.
+A treatment that improves patient-reported outcomes without moving clinical markers may reflect genuine subjective benefit, a placebo response, or a real effect that our clinical tools are too blunt to detect.
+
 ```{r}
 #| label: forest-patient
 #| eval: !expr has_data
+#| fig-alt: "Forest plot showing Hedges' g effect sizes for individual patient-reported outcome studies, with a pooled diamond estimate."
 #| fig-cap: "Forest plot of treatment effects from patient-reported studies"
 patient <- effects[effects$reporting_type == "patient_reported", ]
 if (nrow(patient) >= 2) {
   es_pat <- compute_effect_sizes(patient, outcome_type = "continuous")
   fit_pat <- run_meta(es_pat)
-  forest_gg(fit_pat, title = "Treatment Effects — Patient-Reported Studies")
+  forest_gg(fit_pat, title = "Treatment Effects \u2014 Patient-Reported Studies")
 }
 ```
 
@@ -91,15 +110,21 @@ if (nrow(patient) >= 2) {
 ```{r}
 #| label: lay-summary
 #| eval: !expr has_data
+#| fig-alt: "Simplified visualisation summarising treatment findings for a general audience."
 #| fig-cap: "What patients and clinicians report about treatments"
 cat("*This section provides accessible visualisations for non-specialist audiences.*\n\n")
 ```
 
 ## Study Quality {#sec-quality}
 
+Risk of bias and GRADE ratings determine how much weight the pooled estimates deserve.
+A meta-analysis built on studies with high risk of bias will produce a precise but potentially misleading number.
+The traffic light plot below shows domain-level bias judgements for each study, and the GRADE heatmap summarises overall evidence certainty for each comparison.
+
 ```{r}
 #| label: rob-plot
 #| eval: !expr nrow(quality) > 0
+#| fig-alt: "Traffic light plot showing risk of bias judgements across multiple domains for each included treatment study."
 #| fig-cap: "Risk of bias assessment for included treatment studies"
 treatment_quality <- quality[quality$comparison != "", ]
 if (nrow(treatment_quality) > 0) {
@@ -110,6 +135,7 @@ if (nrow(treatment_quality) > 0) {
 ```{r}
 #| label: grade-plot
 #| eval: !expr nrow(quality) > 0
+#| fig-alt: "Heatmap showing GRADE evidence certainty ratings for each treatment comparison, coloured from very low to high."
 #| fig-cap: "GRADE evidence certainty ratings"
 if (nrow(treatment_quality) > 0 && any(!is.na(treatment_quality$grade))) {
   grade_heatmap(treatment_quality)
@@ -118,9 +144,14 @@ if (nrow(treatment_quality) > 0 && any(!is.na(treatment_quality$grade))) {
 
 ## Publication Bias {#sec-pub-bias}
 
+Funnel plot asymmetry can suggest that small studies with negative results are missing from the evidence base.
+If the plot shows a gap in the lower-left region (small studies with small or negative effects), that is a warning sign: the pooled estimate may be inflated because unfavourable results were never published or were published in harder-to-find venues.
+Asymmetry alone does not prove publication bias -- it can also reflect genuine heterogeneity or differences in study quality -- but it warrants caution.
+
 ```{r}
 #| label: funnel-plot
 #| eval: !expr has_data
+#| fig-alt: "Funnel plot showing individual study effect sizes against their standard errors, with the pooled estimate marked as a vertical line."
 #| fig-cap: "Funnel plot for treatment effectiveness studies"
 if (exists("fit") && fit$k >= 5) {
   funnel_gg(fit)
@@ -128,6 +159,10 @@ if (exists("fit") && fit$k >= 5) {
 ```
 
 ## Sensitivity Analysis {#sec-sensitivity}
+
+Leave-one-out analysis removes each study in turn and re-estimates the pooled effect.
+If the overall result shifts substantially when a single study is dropped, that study is driving the conclusion and deserves closer scrutiny.
+A robust finding holds up regardless of which study is excluded.
 
 ```{r}
 #| label: leave-one-out
@@ -154,4 +189,12 @@ if (!has_data) {
   ))
 }
 ```
+:::
+
+::: {.callout-tip}
+## Living Review
+
+This page is part of a living systematic review.
+New studies are incorporated as they are identified through automated search updates, and the meta-analytic estimates on this page will shift as the evidence base grows.
+If you are reading a cached version, check the data status note above for the last update date.
 :::

@@ -19,18 +19,25 @@ Interactive table of all studies in the database, with filtering and search.
 #| eval: !expr has_data
 if (has_data) {
   display <- studies[, c(
-    "study_id", "year", "title", "journal",
+    "study_id", "year", "title", "journal", "doi",
     "search_topic", "included", "human_verified",
     "study_type", "reporting_type", "data_extracted", "date_added"
   )]
 
+  display$doi <- ifelse(
+    !is.na(display$doi) & nzchar(display$doi),
+    sprintf('<a href="https://doi.org/%s" target="_blank">%s</a>', display$doi, display$doi),
+    ""
+  )
+
   DT::datatable(
     display,
     filter = "top",
+    escape = FALSE,
     options = list(
       pageLength = 25,
       scrollX = TRUE,
-      order = list(list(10, "desc"))
+      order = list(list(11, "desc"))
     ),
     rownames = FALSE
   )

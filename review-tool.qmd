@@ -1,0 +1,56 @@
+---
+title: "Study Review Tool"
+---
+
+```{r}
+#| label: setup
+#| include: false
+source(here::here("R/utils.R"))
+studies <- read_study_database()
+```
+
+The review tool is a Shiny application for screening studies and extracting data. It reads and writes to the same `studies.parquet` database that powers this website.
+
+```{r}
+#| label: review-status
+#| results: asis
+if (nrow(studies) > 0) {
+  n_llm_relevant <- sum(studies$llm_relevant %in% TRUE & !studies$human_verified %in% TRUE)
+  n_unscreened <- sum(is.na(studies$llm_relevant) & !studies$human_verified %in% TRUE)
+  n_included_no_extract <- sum(studies$included %in% TRUE & !studies$data_extracted %in% TRUE)
+
+  cli::cat_line("## Pending Work\n")
+  cli::cat_line(glue::glue("- **LLM-flagged, needs human review**: {n_llm_relevant}"))
+  cli::cat_line(glue::glue("- **Unscreened**: {n_unscreened}"))
+  cli::cat_line(glue::glue("- **Included, needs data extraction**: {n_included_no_extract}"))
+}
+```
+
+## Running Locally
+
+```bash
+Rscript -e 'shiny::runApp("app-review.R")'
+```
+
+## Deployment
+
+The app is deployed separately from this static site. After reviewing or extracting data, commit the updated parquet files and the website re-renders automatically.
+
+::: {.callout-tip}
+## Deploy to shinyapps.io
+
+```r
+rsconnect::deployApp(
+  appDir = ".",
+  appFiles = c("app-review.R", "R/utils.R", "R/extraction.R", "data/studies.parquet"),
+  appName = "lc-review"
+)
+```
+
+Once deployed, update the link below.
+:::
+
+::: {.callout-note}
+## App link
+The review tool is not yet deployed. Run it locally with the command above, or deploy to [shinyapps.io](https://www.shinyapps.io/) / Posit Connect and update this page with the URL.
+:::

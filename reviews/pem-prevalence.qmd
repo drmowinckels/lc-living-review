@@ -16,16 +16,23 @@ has_data <- nrow(pem_data) > 0
 
 ## Overview
 
-Post-exertional malaise (PEM) is the cardinal symptom distinguishing ME/CFS and a significant subset of Long COVID from other fatigue conditions. This section pools PEM prevalence estimates across studies and examines variation by population, assessment method, and diagnostic criteria.
+Post-exertional malaise (PEM) -- the worsening of symptoms after physical or cognitive exertion that would not have caused problems before illness -- is the single most important symptom for distinguishing ME/CFS from other fatigue conditions.
+In Long COVID, PEM identifies the subset of patients whose illness most closely resembles ME/CFS, and who are most likely to be harmed by graded exercise programmes.
+How common PEM actually is depends heavily on how you ask: a single screening question captures fewer cases than a validated questionnaire, and diagnostic criteria that require PEM will by definition find it in 100% of qualifying patients.
+This section pools PEM prevalence estimates and breaks them down by method and criteria so you can see how those choices shape the numbers.
 
 ## Pooled PEM Prevalence
 
 ### In Long COVID
 
+The pooled estimate below combines all Long COVID studies that reported PEM prevalence, regardless of assessment method.
+The forest plot shows each study's estimate so you can judge the spread.
+
 ```{r}
 #| label: pem-lc
 #| eval: !expr has_data
-#| fig-cap: "PEM prevalence in Long COVID populations"
+#| fig-cap: "Forest plot of PEM prevalence across Long COVID cohorts -- each row is one study, with the pooled estimate at the bottom."
+#| fig-alt: "Forest plot showing PEM prevalence estimates in Long COVID populations. Each study is a row with a point estimate and horizontal confidence interval whisker. A diamond at the bottom represents the pooled random-effects estimate."
 pem_lc <- pem_data[pem_data$condition == "long_covid", ]
 if (nrow(pem_lc) >= 2) {
   fit <- run_prevalence_meta(pem_lc)
@@ -40,10 +47,15 @@ if (nrow(pem_lc) >= 2) {
 
 ### In ME/CFS
 
+PEM prevalence in ME/CFS cohorts depends almost entirely on which diagnostic criteria were used to define the sample.
+Criteria that require PEM (such as the Canadian Consensus Criteria or the IOM criteria) will report near-universal prevalence by design.
+Studies using broader criteria like Oxford or Fukuda may include patients without PEM, yielding lower prevalence estimates.
+
 ```{r}
 #| label: pem-mecfs
 #| eval: !expr has_data
-#| fig-cap: "PEM prevalence in ME/CFS populations"
+#| fig-cap: "Forest plot of PEM prevalence across ME/CFS cohorts, reflecting variation by diagnostic criteria."
+#| fig-alt: "Forest plot showing PEM prevalence estimates in ME/CFS populations. Each study is a row with a point estimate and horizontal confidence interval whisker."
 pem_mecfs <- pem_data[pem_data$condition == "mecfs", ]
 if (nrow(pem_mecfs) >= 2) {
   fit_mecfs <- run_prevalence_meta(pem_mecfs)
@@ -53,10 +65,16 @@ if (nrow(pem_mecfs) >= 2) {
 
 ## By Assessment Method
 
+The way PEM is measured substantially affects reported prevalence.
+A single yes/no screening question will miss patients who experience PEM but do not recognise the term.
+Validated instruments like the DePaul Symptom Questionnaire (DSQ) capture more cases because they describe the experience in concrete terms.
+Activity monitoring and two-day cardiopulmonary exercise testing (CPET) provide objective evidence but are rarely used in large cohorts.
+
 ```{r}
 #| label: pem-by-method
 #| eval: !expr has_data
-#| fig-cap: "PEM prevalence by assessment method"
+#| fig-cap: "PEM prevalence estimates broken down by the assessment method used in each study."
+#| fig-alt: "Text output showing pooled PEM prevalence and confidence intervals grouped by assessment method (e.g. questionnaire, clinical interview, CPET)."
 if (has_data && any(!is.na(pem_data$assessment_method))) {
   methods <- unique(pem_data$assessment_method[!is.na(pem_data$assessment_method)])
   for (m in methods) {
@@ -72,6 +90,10 @@ if (has_data && any(!is.na(pem_data$assessment_method))) {
 ```
 
 ## By Diagnostic Criteria
+
+Different diagnostic criteria set different bars for who counts as a patient.
+Stricter criteria that require PEM will mechanically produce higher PEM prevalence; broader criteria that treat PEM as optional will produce lower estimates.
+Understanding this relationship is essential for interpreting any PEM prevalence number.
 
 ```{r}
 #| label: pem-by-criteria
@@ -90,7 +112,11 @@ cat("*How common is PEM? Visual summary for non-specialist audiences.*\n")
 ```
 
 ::: {.callout-note}
-## Data Status
+## Living Review
+
+This page is part of a living systematic review and is updated as new studies are identified, screened, and extracted.
+The data, figures, and pooled estimates will change over time.
+PEM prevalence estimates are particularly sensitive to new studies that use different assessment methods.
 
 ```{r}
 #| label: data-status

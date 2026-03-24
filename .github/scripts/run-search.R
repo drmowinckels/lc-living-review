@@ -49,21 +49,24 @@ main <- function() {
     new_results$abstract[!is.na(new_results$pmid)] <- abstracts
   }
 
-  has_api_key <- Sys.getenv("GEMINI_API_KEY") != ""
+  has_api_key <- any(nzchar(Sys.getenv(
+    c("ANTHROPIC_API_KEY", "GEMINI_API_KEY", "MISTRAL_API_KEY", "GITHUB_TOKEN")
+  )))
 
   if (has_api_key) {
-    message("Running LLM screening...")
+    message(sprintf("Running LLM screening with: %s", llm_model_name()))
     for (topic in unique(new_results$search_topic)) {
       topic_studies <- new_results[new_results$search_topic == topic, ]
       screened <- screen_batch(topic_studies, search_topic = topic)
       new_results[new_results$search_topic == topic, names(screened)] <- screened
     }
   } else {
-    message("No GEMINI_API_KEY set, skipping LLM screening.")
+    message("No API key found — screening disabled. Set GEMINI_API_KEY, ANTHROPIC_API_KEY, MISTRAL_API_KEY, or GITHUB_TOKEN.")
     new_results$llm_relevant <- NA
     new_results$llm_category <- NA
     new_results$llm_study_type <- NA
     new_results$llm_reporting_type <- NA
+    new_results$llm_model <- NA_character_
   }
 
   new_results$study_id <- mapply(

@@ -4,21 +4,44 @@ aliases:
   - /reviews/grade/
 ---
 
+## What is GRADE?
+
+GRADE (Grading of Recommendations, Assessment, Development and Evaluation) is a systematic framework for rating the certainty of evidence.
+It answers a specific question: how confident should we be that the estimated effect is close to the true effect?
+Certainty is not the same as importance -- a finding can be critically important even if the evidence is rated "very low."
+
+Each outcome starts at "high" certainty and can be downgraded for five reasons: risk of bias in the studies, inconsistency across results, indirectness (the studies do not quite match the question), imprecision (wide confidence intervals), and publication bias.
+It can also be upgraded if there is a large effect, a dose-response gradient, or if plausible confounders would have reduced the observed effect.
+
+## How to Read the Table
+
+The table below groups outcomes by research domain.
+The **Certainty** column is colour-coded:
+
+- **High** (green): further research is very unlikely to change the estimate.
+- **Moderate** (amber): further research is likely to have an important impact and may change the estimate.
+- **Low** (orange): further research is very likely to change the estimate.
+- **Very low** (red): the estimate is very uncertain.
+
+For clinical decision-making, "very low" certainty does not mean the finding is wrong -- it means we need more and better studies before acting on it with confidence.
+
 ```{r}
+#| label: setup
 source(here::here("R/utils.R"))
 grade <- read_grade_data()
 ```
 
 ```{r}
+#| label: grade-table
 #| results: asis
 if (nrow(grade) == 0) {
   cli::cat_line("No GRADE assessments available yet.")
 } else {
   certainty_colours <- c(
-    high       = "#28a745",
-    moderate   = "#daa520",
-    low        = "#fd7e14",
-    `very low` = "#dc3545"
+    high = "#2e8a43ff",
+    moderate = "#b58e2cff",
+    low = "#d16d1cff",
+    `very low` = "#b83744ff"
   )
 
   grade$group <- dplyr::coalesce(grade$domain, grade$search_topic, "other")
@@ -65,3 +88,11 @@ if (nrow(grade) == 0) {
   }
 }
 ```
+
+::: {.callout-note}
+## Living Review
+
+This page is part of a living systematic review.
+GRADE assessments are updated as new studies are added and existing assessments are revised.
+Certainty ratings may change in either direction as the evidence base grows.
+:::

@@ -10,9 +10,6 @@ format:
     toc: true
     toc-depth: 3
     number-sections: true
-  pdf:
-    toc: true
-    number-sections: true
   typst:
     toc: true
 lang: en

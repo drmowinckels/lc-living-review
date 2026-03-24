@@ -1,25 +1,35 @@
 screening_prompt <- function(title, abstract, search_topic) {
   criteria <- list(
-    treatment_effectiveness = paste(
-      "Treatment or intervention study for Long COVID, post-COVID condition,",
-      "ME/CFS, or post-viral fatigue. Must report outcomes of a specific",
-      "intervention (pacing, GET, CBT, pharmacological, supplements, rehabilitation).",
+    treatment_cbt_psych = paste(
+      "Behavioural, psychological, or rehabilitation intervention study for",
+      "Long COVID, post-COVID condition, ME/CFS, or post-viral fatigue.",
+      "Includes CBT, graded exercise therapy, pacing, activity management,",
+      "self-management programmes, occupational therapy, mindfulness,",
+      "acceptance and commitment therapy, or similar non-pharmacological",
+      "behavioural interventions. Must report outcomes. Must have original data."
+    ),
+    treatment_biomedical = paste(
+      "Pharmacological, supplement, or biomedical intervention study for",
+      "Long COVID, post-COVID condition, ME/CFS, or post-viral fatigue.",
+      "Includes drugs (e.g., LDN, rituximab, antivirals, corticosteroids,",
+      "stimulants, antihistamines, immunoglobulin), supplements (e.g., CoQ10,",
+      "NADH, carnitine, vitamins), or procedures (e.g., plasmapheresis,",
+      "immunoadsorption, vagus nerve stimulation). Must report outcomes.",
       "Must have original data (not a narrative review or editorial)."
     ),
-    prevalence = paste(
-      "Prevalence or epidemiology study reporting symptom prevalence rates",
-      "in Long COVID or ME/CFS populations. Must report point or period",
-      "prevalence with sample sizes. Must have original data."
+    biomarkers = paste(
+      "Study reporting biomarkers, immune markers, cytokines, metabolomics,",
+      "proteomics, or other biological measurements in Long COVID or ME/CFS.",
+      "Must have original data."
     ),
-    pem_prevalence = paste(
-      "Study reporting on post-exertional malaise (PEM) or post-exertional",
-      "symptom exacerbation (PESE) in Long COVID or ME/CFS. Must report",
-      "PEM prevalence, characterisation, or objective measurement (e.g., CPET)."
+    outcomes = paste(
+      "Prevalence, epidemiology, or longitudinal outcome study reporting",
+      "symptom prevalence rates, recovery trajectories, prognosis, or natural",
+      "history of Long COVID or ME/CFS. Must have original data."
     ),
-    recovery_trajectories = paste(
-      "Longitudinal study reporting recovery rates, prognosis, or natural",
-      "history of Long COVID or ME/CFS. Must have follow-up data over time.",
-      "Studies stratifying by PEM status are especially relevant."
+    systematic_reviews = paste(
+      "Systematic review, meta-analysis, scoping review, or Cochrane review",
+      "of Long COVID or ME/CFS research. Must use systematic search methods."
     )
   )
 
@@ -59,44 +69,16 @@ screening_prompt <- function(title, abstract, search_topic) {
   )
 }
 
-screen_study_gemini <- function(title, abstract, search_topic,
-                                api_key = Sys.getenv("GEMINI_API_KEY"),
-                                model = "gemini-2.5-flash") {
-  if (api_key == "") stop("Set GEMINI_API_KEY environment variable")
-
+screen_study <- function(title, abstract, search_topic) {
   prompt <- screening_prompt(title, abstract, search_topic)
+  text <- call_llm(prompt, max_tokens = 300)
 
-  body <- list(
-    contents = list(
-      list(parts = list(list(text = prompt)))
-    ),
-    generationConfig = list(
-      maxOutputTokens = 300,
-      temperature = 0
-    )
-  )
-
-  url <- sprintf(
-    "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s",
-    model, api_key
-  )
-
-  resp <- httr::POST(
-    url = url,
-    httr::add_headers(`content-type` = "application/json"),
-    body = jsonlite::toJSON(body, auto_unbox = TRUE),
-    encode = "raw"
-  )
-
-  if (httr::status_code(resp) != 200) {
-    warning(sprintf("API error %d for: %s", httr::status_code(resp), title))
+  if (is.null(text)) {
     return(list(relevant = NA, confidence = NA, category = NA,
-                study_type = NA, reporting_type = NA, reason = "API error"))
+                study_type = NA, reporting_type = NA, reason = "All providers failed"))
   }
 
-  content <- httr::content(resp, as = "text", encoding = "UTF-8")
-  parsed <- jsonlite::fromJSON(content)
-  text <- parsed$candidates[[1]]$content$parts[[1]]$text
+  text <- gsub("^```json\\s*|^```\\s*|\\s*```$", "", trimws(text))
 
   tryCatch(
     jsonlite::fromJSON(text),
@@ -108,29 +90,34 @@ screen_study_gemini <- function(title, abstract, search_topic,
   )
 }
 
-screen_batch <- function(studies, search_topic, rate_limit_delay = 1.5) {
+screen_batch <- function(studies, search_topic, save_fn = NULL,
+                         rate_limit_delay = 1.5) {
   results <- vector("list", nrow(studies))
 
   for (i in seq_len(nrow(studies))) {
-    message(sprintf("[%d/%d] Screening: %s", i, nrow(studies), studies$title[i]))
+    cli::cli_alert_info(
+      "[{i}/{nrow(studies)}] Screening: {.val {studies$title[i]}}"
+    )
 
-    results[[i]] <- screen_study_gemini(
+    results[[i]] <- screen_study(
       title = studies$title[i],
       abstract = studies$abstract[i],
       search_topic = search_topic
     )
 
+    if (!is.null(save_fn)) save_fn(i, results[[i]])
     Sys.sleep(rate_limit_delay)
   }
 
   screening_results <- do.call(rbind, lapply(results, function(r) {
     data.frame(
-      llm_relevant = isTRUE(r$relevant),
+      llm_relevant = if (is.na(r$relevant)) NA else isTRUE(r$relevant),
       llm_category = r$category %||% NA_character_,
       llm_study_type = r$study_type %||% NA_character_,
       llm_reporting_type = r$reporting_type %||% NA_character_,
       llm_confidence = r$confidence %||% NA_character_,
       llm_reason = r$reason %||% NA_character_,
+      llm_model = llm_model_name(),
       stringsAsFactors = FALSE
     )
   }))

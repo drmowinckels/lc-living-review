@@ -3,6 +3,11 @@
 source(here::here("R/utils.R"))
 source(here::here("R/extraction.R"))
 
+safe_filename <- function(x) {
+  out <- iconv(x, from = "UTF-8", to = "ASCII//TRANSLIT", sub = "")
+  gsub("[^a-zA-Z0-9._-]", "", out)
+}
+
 fetch_all_fulltext <- function(
   limit = Inf,
   cache_dir = here::here("data/fulltext"),
@@ -14,7 +19,8 @@ fetch_all_fulltext <- function(
   dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
 
   already_cached <- tools::file_path_sans_ext(list.files(cache_dir, pattern = "\\.rds$"))
-  todo <- rel[!rel$study_id %in% already_cached, ]
+  rel$safe_id <- safe_filename(rel$study_id)
+  todo <- rel[!rel$safe_id %in% already_cached, ]
 
   if (nrow(todo) == 0) {
     cli::cli_alert_success("All relevant studies already cached.")
@@ -28,14 +34,21 @@ fetch_all_fulltext <- function(
 
   for (i in seq_len(n_todo)) {
     sid <- todo$study_id[i]
+    safe_sid <- todo$safe_id[i]
     pmid <- todo$pmid[i]
     doi <- todo$doi[i]
 
-    cli::cli_text("[{i}/{n_todo}] {sid}")
+    cli::cli_text("[{i}/{n_todo}] {safe_sid}")
 
-    content <- fetch_study_content(
-      pmid = if (!is.na(pmid) && pmid != "") pmid else NA,
-      doi = if (!is.na(doi) && doi != "") doi else NA
+    content <- tryCatch(
+      fetch_study_content(
+        pmid = if (!is.na(pmid) && pmid != "") pmid else NA,
+        doi = if (!is.na(doi) && doi != "") doi else NA
+      ),
+      error = function(e) {
+        cli::cli_alert_danger("Error fetching {safe_sid}: {conditionMessage(e)}")
+        NULL
+      }
     )
 
     if (is.null(content)) {
@@ -48,7 +61,7 @@ fetch_all_fulltext <- function(
       stats[[src]] <- stats[[src]] + 1L
     }
 
-    saveRDS(content, file.path(cache_dir, paste0(sid, ".rds")))
+    saveRDS(content, file.path(cache_dir, paste0(safe_sid, ".rds")))
     Sys.sleep(delay)
   }
 
