@@ -25,9 +25,16 @@ jobs:
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           packages: |
-            europepmc
-            httr
-            jsonlite
+            any::here
+            any::arrow
+            any::europepmc
+            any::httr2
+            any::jsonlite
+            any::dplyr
+            any::cli
+            any::glue
+            any::xml2
+            any::purrr
           cache-version: 1
 
       - name: Run search pipeline
@@ -86,15 +93,24 @@ jobs:
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           packages: |
-            metafor
-            ggplot2
-            dplyr
-            forcats
-            scales
-            DT
-            jsonlite
-            knitr
-            rmarkdown
+            any::here
+            any::arrow
+            any::metafor
+            any::ggplot2
+            any::dplyr
+            any::purrr
+            any::glue
+            any::cli
+            any::gt
+            any::scales
+            any::jsonlite
+            any::europepmc
+            any::pdftools
+            any::DiagrammeR
+            any::httr2
+            any::xml2
+            any::readxl
+            any::DT
           cache-version: 1
 
       - uses: quarto-dev/quarto-actions/setup@v2

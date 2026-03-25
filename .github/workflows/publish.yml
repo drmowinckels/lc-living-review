@@ -49,6 +49,11 @@ jobs:
             any::jsonlite
             any::europepmc
             any::pdftools
+            any::DiagrammeR
+            any::httr2
+            any::xml2
+            any::readxl
+            any::DT
 
       - name: Render Quarto Project
         uses: quarto-dev/quarto-actions/render@v2
