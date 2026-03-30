@@ -1,5 +1,6 @@
 ---
 title: "Recovery Trajectories"
+subtitle: "How recovery unfolds over time, stratified by post-exertional malaise"
 ---
 
 ```{r}
@@ -14,12 +15,63 @@ recovery <- read_extracted_data("recovery_trajectories")
 has_data <- nrow(recovery) > 0
 ```
 
-## Overview
+```{r}
+#| label: data-pending
+#| results: asis
+#| echo: false
+#| eval: !expr '!has_data'
+cat("::: {.callout-note}\n")
+cat("## Data not yet available\n\n")
+cat("The recovery trajectories data extraction has not been completed yet. ")
+cat("This review will be populated once the extraction pipeline includes the `recovery_trajectories` domain. ")
+cat("Raw data may exist in `data/extracted/recovery_outcomes.csv` but has not been integrated into the extraction schema.\n")
+cat(":::\n")
+```
 
+::: {.lead}
 Recovery from Long COVID and ME/CFS is not a straight line from sick to well.
 Many patients experience relapsing-remitting patterns -- feeling better for days or weeks, then crashing after exertion.
 Others plateau at a level of partial recovery that persists for months or years.
 The presence of post-exertional malaise (PEM) is one of the strongest predictors of slower or absent recovery, which is why this section stratifies results by PEM status wherever the data allows.
+:::
+
+::: {.at-a-glance}
+## At a Glance {#sec-lay}
+
+Recovery from these conditions is slow and unpredictable.
+The presence of post-exertional malaise (PEM) — crashes after activity — is one of the strongest predictors of whether someone will recover.
+
+```{r}
+#| label: study-count-badge
+#| results: asis
+if (has_data) {
+  cat(sprintf(
+    '<div class="study-count"><span class="count-number">%d</span><span class="count-label">datapoints from %d studies</span></div>',
+    nrow(recovery), length(unique(recovery$study_id))
+  ))
+}
+```
+
+```{r}
+#| label: lay-recovery-waffle
+#| eval: !expr has_data
+#| fig-height: 5
+#| fig-alt: "Waffle chart showing the approximate percentage of patients who recover, where each square represents 1%."
+#| fig-cap: "How many people recover? Each coloured square represents 1% of patients. Recovery rates vary hugely between studies depending on how 'recovery' is defined and how long patients are followed."
+if (has_data && "recovery_pct" %in% names(recovery)) {
+  median_recovery <- round(median(recovery$recovery_pct[!is.na(recovery$recovery_pct)]))
+  if (!is.na(median_recovery) && median_recovery > 0) {
+    lay_waffle(median_recovery, 100,
+               yes_label = "Recovered",
+               no_label = "Not recovered",
+               title = "Approximate recovery rate across studies",
+               subtitle = paste0("Median across studies: ~", median_recovery, "% (but definitions vary widely)"))
+  }
+}
+```
+:::
+
+<hr class="section-divider">
 
 ## Recovery Rates
 
@@ -50,9 +102,9 @@ if (has_data) {
 
 ### By PEM Status
 
-This is where the data becomes most clinically relevant.
-Patients with PEM consistently show lower recovery rates than those without, often dramatically so.
-If your cohort does not distinguish PEM-positive from PEM-negative patients, its recovery rate is likely an average that obscures two very different trajectories.
+::: {.key-finding}
+PEM is the strongest predictor of slower recovery. Patients with PEM consistently show lower recovery rates than those without, often dramatically so. If your cohort does not distinguish PEM-positive from PEM-negative patients, its recovery rate is likely an average that obscures two very different trajectories.
+:::
 
 ```{r}
 #| label: recovery-pem
@@ -75,6 +127,8 @@ if (has_data && any(!is.na(recovery$pem_status))) {
   }
 }
 ```
+
+::: {.panel-tabset}
 
 ## Recovery Over Time
 
@@ -139,15 +193,9 @@ if (has_data && any(!is.na(recovery$qol_score))) {
 }
 ```
 
-## Lay Summary {#sec-lay}
+:::
 
-```{r}
-#| label: lay-recovery
-#| eval: !expr has_data
-cat("*Accessible recovery trajectory visualisations for non-specialist audiences.*\n")
-```
-
-::: {.callout-note}
+::: {.callout-note collapse="true"}
 ## Living Review
 
 This page is part of a living systematic review and is updated as new studies are identified, screened, and extracted.

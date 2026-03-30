@@ -1,5 +1,6 @@
 ---
 title: "Biomarkers"
+subtitle: "Biological markers in Long COVID and ME/CFS research"
 aliases:
   - /reviews/biomarkers/
 ---
@@ -7,35 +8,107 @@ aliases:
 ```{r}
 #| label: setup
 #| include: false
+library(targets)
+tar_config_set(store = here::here("_targets"))
 source(here::here("R/utils.R"))
 source(here::here("R/meta-analysis.R"))
 source(here::here("R/plots.R"))
 
-studies <- read_study_database()
-bm <- read_extracted_data("biomarkers")
+studies <- targets::tar_read(studies)
+bm <- targets::tar_read(biomarkers)
 has_data <- nrow(bm) > 0
 ```
 
-## Overview
-
+::: {.lead}
 Biomarkers are measurable biological signals -- proteins, metabolites, immune markers, imaging findings -- that can reveal what is happening in the body at a level symptoms alone cannot reach.
 For Long COVID and ME/CFS, biomarker research serves two purposes: it can validate patients' experiences with objective evidence, and it can point toward treatment targets.
 This review synthesises biomarker findings across immune dysfunction, autoantibodies, neuroinflammation, microclots, endothelial dysfunction, metabolomics, and proteomics.
+:::
 
 ```{r}
 #| label: included-studies
 #| results: asis
+#| echo: false
 topic_studies <- studies |>
   dplyr::filter(
     !is.na(search_topic), search_topic == "biomarkers",
     !is.na(llm_relevant), llm_relevant
   )
 if (nrow(topic_studies) > 0) {
-  cli::cat_line(glue::glue("**{nrow(topic_studies)} relevant studies** identified."))
+  cat(sprintf('<div class="study-count"><span class="count-number">%d</span><span class="count-label">relevant<br>studies</span></div>\n', nrow(topic_studies)))
 }
 ```
 
-## Biomarker Types {#sec-types}
+::: {.at-a-glance}
+
+## At a Glance {#sec-lay}
+
+Researchers are searching for biological markers — measurable signals in blood, brain scans, and other tests — that could explain what is going wrong in ME/CFS and Long COVID.
+Most findings so far point to immune system problems, but the evidence is still early.
+
+```{r}
+#| label: lay-biomarker-types
+#| eval: !expr has_data
+#| fig-height: 5
+#| fig-alt: "Horizontal bar chart showing the number of biomarker findings by biological category."
+#| fig-cap: "Where are researchers looking? Each bar shows how many findings have been reported for that type of biological marker. Immune markers and cytokines dominate, but this reflects research focus, not necessarily where the most important signals are."
+if (has_data && "biomarker_type" %in% names(bm)) {
+  type_counts <- bm |>
+    dplyr::filter(!is.na(biomarker_type)) |>
+    dplyr::count(biomarker_type, sort = TRUE) |>
+    dplyr::mutate(biomarker_type = factor(biomarker_type, levels = rev(biomarker_type)))
+  if (nrow(type_counts) > 0) {
+    ggplot(type_counts, aes(x = n, y = biomarker_type)) +
+      geom_col(fill = cols_review["clinical"], width = 0.7) +
+      geom_text(aes(label = n), hjust = -0.2, size = 3.5) +
+      scale_x_continuous(expand = expansion(mult = c(0, 0.15))) +
+      labs(x = "Number of findings", y = NULL,
+           title = "What biological markers are researchers studying?",
+           subtitle = "Number of findings by marker type") +
+      theme_lay
+  }
+}
+```
+
+```{r}
+#| label: lay-biomarker-direction
+#| eval: !expr has_data
+#| fig-height: 4
+#| fig-alt: "Stacked bar chart showing what proportion of biomarker findings show elevated, reduced, mixed, or no difference results."
+#| fig-cap: "What do the biomarker studies find? Most findings show markers are either elevated (higher than normal) or give mixed results across studies. 'Mixed' means different studies disagree — a sign that more research is needed."
+if (has_data && "finding_direction" %in% names(bm)) {
+  dir_counts <- bm |>
+    dplyr::filter(!is.na(finding_direction)) |>
+    dplyr::count(finding_direction)
+  if (nrow(dir_counts) > 0) {
+    dir_counts$pct <- dir_counts$n / sum(dir_counts$n)
+    dir_colours <- c("elevated" = "#D55E00", "reduced" = "#0072B2",
+                     "no difference" = "#999999", "mixed" = "#E69F00")
+    ggplot(dir_counts, aes(x = n, y = "Findings", fill = finding_direction)) +
+      geom_col(position = "stack", width = 0.6) +
+      geom_text(aes(label = paste0(n, " (", round(pct * 100), "%)")),
+                position = position_stack(vjust = 0.5), size = 3.5,
+                colour = "white", fontface = "bold") +
+      scale_fill_manual(values = dir_colours, name = NULL) +
+      labs(x = "Number of findings", y = NULL,
+           title = "What do researchers find?",
+           subtitle = "Direction of biomarker changes in patients vs healthy controls") +
+      theme_lay +
+      theme(axis.text.y = element_blank(), axis.ticks.y = element_blank(),
+            legend.position = "bottom")
+  }
+}
+```
+
+:::
+
+<hr class="section-divider">
+
+## Biomarker Types & Directions {.tabset}
+
+::: {.panel-tabset}
+
+### Biomarker Types
 
 The table below groups every extracted biomarker finding by its biological category.
 Some categories (immune markers, cytokines) appear far more often than others, reflecting where researchers have focused -- not necessarily where the strongest signals live.
@@ -55,7 +128,7 @@ if (has_data && "biomarker_type" %in% names(bm)) {
 }
 ```
 
-## Direction of Findings {#sec-direction}
+### Direction of Findings
 
 Whether a biomarker is elevated or reduced in patients relative to controls matters enormously for interpretation.
 A consistently elevated inflammatory marker across many studies strengthens the case for that pathway's involvement.
@@ -98,11 +171,17 @@ ggplot(dir_counts, aes(x = reorder(Type, n), y = n, fill = Direction)) +
   theme_review
 ```
 
+:::
+
 ## Condition Comparison {#sec-condition}
 
 Long COVID and ME/CFS share substantial symptom overlap, and a key question is whether they also share biological mechanisms.
+
+::: {.key-finding}
 When a biomarker finding appears in studies of both conditions, it strengthens the case for shared pathophysiology.
 Findings unique to one condition may reflect genuine biological differences or simply gaps in the research -- ME/CFS has decades of biomarker literature, while Long COVID research is only a few years old.
+:::
+
 The table below shows how findings distribute across conditions.
 
 ```{r}
@@ -182,7 +261,7 @@ if (has_data && "pem_assessed" %in% names(bm)) {
 }
 ```
 
-::: {.callout-note}
+::: {.callout-note collapse="true"}
 ## Living Review
 
 This page is part of a living systematic review and is updated as new studies are identified, screened, and extracted.

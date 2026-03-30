@@ -1,5 +1,6 @@
 ---
 title: "Treatment: Biomedical Interventions"
+subtitle: "Evidence for pharmacological, nutritional, and procedural approaches"
 aliases:
   - /reviews/biomedical/
   - /reviews/pharmacological/
@@ -8,19 +9,21 @@ aliases:
 ```{r}
 #| label: setup
 #| include: false
+library(targets)
+tar_config_set(store = here::here("_targets"))
 source(here::here("R/utils.R"))
 source(here::here("R/meta-analysis.R"))
 source(here::here("R/plots.R"))
 
-studies <- read_study_database()
-effects <- read_extracted_data("treatment_biomedical")
-quality <- read_quality_ratings()
+studies <- tar_read(studies)
+effects <- tar_read(bio_effects)
+quality <- tar_read(quality)
 has_data <- nrow(effects) > 0
 ```
 
-## Overview
-
+::: {.lead}
 Biomedical interventions for Long COVID and ME/CFS span a wide range — from repurposed pharmaceuticals like low-dose naltrexone and antivirals, to nutritional supplements like CoQ10 and creatine, to procedural treatments like apheresis and transcranial stimulation.
+:::
 
 The evidence is growing fast but remains fragmented.
 Most studies are small, many lack placebo controls, and the interventions target different mechanisms entirely.
@@ -29,29 +32,17 @@ Pooling across such different treatments is statistically possible but clinicall
 ```{r}
 #| label: included-studies
 #| results: asis
-topic_studies <- studies |>
-  dplyr::filter(
-    !is.na(search_topic), search_topic == "treatment_biomedical",
-    !is.na(llm_relevant), llm_relevant
-  )
-if (nrow(topic_studies) > 0) {
-  n_proto <- if ("is_protocol" %in% names(topic_studies)) sum(topic_studies$is_protocol, na.rm = TRUE) else 0L
-  n_results <- nrow(topic_studies) - n_proto
-  n_rct <- sum(grepl("RCT|random", topic_studies$llm_study_type %||% "", ignore.case = TRUE) &
-    !topic_studies$is_protocol, na.rm = TRUE)
-  cli::cat_line(glue::glue("**{n_results} studies with results** ({n_rct} RCTs), plus {n_proto} registered protocols."))
-}
+#| echo: false
+counts <- tar_read(bio_study_counts)
+cat(sprintf('<div class="study-count"><span class="count-number">%d</span><span class="count-label">studies with<br>results</span></div>', counts$n_results))
+cat(sprintf('<div class="study-count"><span class="count-number">%d</span><span class="count-label">randomised<br>controlled trials</span></div>', counts$n_rct))
+cat(sprintf('<div class="study-count"><span class="count-number">%d</span><span class="count-label">registered<br>protocols</span></div>\n', counts$n_protocols))
 ```
-
-## Effects by Intervention {#sec-effects-intervention}
-
-Pooling LDN with nirmatrelvir with creatine into a single number would be meaningless.
-The plot below shows a separate pooled estimate for each intervention category — answering the question "what does the evidence say about _this specific_ treatment?"
 
 ```{r}
 #| label: forest-data
 #| include: false
-forest_df <- if (has_data) prepare_forest_data(effects) else data.frame()
+forest_df <- tar_read(bio_forest)
 has_forest <- nrow(forest_df) >= 2
 intervention_forest_h <- 6
 domain_forest_h <- 6
@@ -64,6 +55,39 @@ if (has_forest && "outcome_domain" %in% names(forest_df)) {
   domain_forest_h <- bar_height(n_dom)
 }
 ```
+
+::: {.at-a-glance}
+
+## At a Glance {#sec-lay}
+
+```{r}
+#| label: lay-biomed-lollipop
+#| eval: !expr 'has_forest && "intervention_category" %in% names(forest_df)'
+#| fig-height: 8
+#| fig-alt: "Lollipop chart showing how much each biomedical treatment helps, with plain-language labels."
+#| fig-cap: "How much does each biomedical treatment help? Each dot represents the pooled result from all studies of that treatment. Labels describe the size of the effect in plain language."
+lay_lollipop(forest_df, group_col = "intervention_category",
+             title = "Biomedical treatments: how much do they help?")
+```
+
+```{r}
+#| label: lay-biomed-verdict
+#| eval: !expr 'has_forest && "intervention_category" %in% names(forest_df)'
+#| fig-height: 8
+#| fig-alt: "Traffic-light dot plot showing whether each biomedical treatment is likely helpful, uncertain, or may not help."
+#| fig-cap: "Does the treatment help? Green = evidence points towards benefit. Grey = we cannot tell from the available studies."
+lay_treatment_summary(forest_df, group_col = "intervention_category",
+                       title = "Biomedical treatments: does the evidence say they help?")
+```
+
+:::
+
+<hr class="section-divider">
+
+## Effects by Intervention {#sec-effects-intervention}
+
+Pooling LDN with nirmatrelvir with creatine into a single number would be meaningless.
+The plot below shows a separate pooled estimate for each intervention category — answering the question "what does the evidence say about _this specific_ treatment?"
 
 ```{r}
 #| label: intervention-forest
@@ -95,7 +119,72 @@ subgroup_forest(
 )
 ```
 
-## Interventions {#sec-interventions}
+## Prevention: Reducing Risk of Developing Long COVID {#sec-prevention}
+
+::: {.key-finding}
+Several interventions studied in the biomedical literature are not treatments for established Long COVID or ME/CFS — they are **prevention strategies** aimed at reducing the risk of developing Long COVID after SARS-CoV-2 infection.
+These include vaccination before infection, antiviral treatment during acute COVID, and SSRI use during acute illness.
+Their effect sizes are reported as odds ratios, hazard ratios, or relative risks (where values below 1.0 indicate a protective effect), and cannot be pooled with the standardised mean differences used in the treatment forest plots above.
+:::
+
+```{r}
+#| label: prevention-data
+#| include: false
+prevention_df <- tar_read(bio_prevention)
+has_prevention <- nrow(prevention_df) > 0
+prevention_h <- if (has_prevention) min(20, max(5, nrow(prevention_df) * 0.4 + 2)) else 6
+```
+
+```{r}
+#| label: prevention-forest
+#| eval: !expr has_prevention
+#| fig-height: !expr prevention_h
+#| fig-alt: "Forest plot of prevention interventions showing odds ratios, hazard ratios, and relative risks on a log scale. Values below 1 indicate the intervention reduces risk of Long COVID."
+#| fig-cap: "Prevention interventions: risk ratios on a log scale. Values left of the dashed line (ratio < 1) indicate the intervention reduces the risk of developing Long COVID. Point size is proportional to sample size where available."
+ggplot(
+  prevention_df,
+  aes(
+    y = reorder(study_label, -effect_size),
+    x = effect_size,
+    xmin = ci_lower,
+    xmax = ci_upper,
+    colour = intervention_category
+  )
+) +
+  geom_vline(xintercept = 1, linetype = "dashed", colour = "grey50") +
+  geom_errorbarh(height = 0.2) +
+  geom_point(size = 2.5) +
+  scale_x_log10() +
+  labs(
+    x = "Risk ratio (log scale)",
+    y = NULL,
+    colour = "Intervention"
+  ) +
+  theme_review +
+  theme(legend.position = "bottom")
+```
+
+```{r}
+#| label: prevention-table
+#| eval: !expr has_prevention
+prev_summary <- prevention_df |>
+  dplyr::group_by(intervention_category) |>
+  dplyr::summarise(
+    k = dplyr::n(),
+    `Median ratio` = round(median(effect_size), 2),
+    `Range` = paste0(round(min(effect_size), 2), "–", round(max(effect_size), 2)),
+    .groups = "drop"
+  ) |>
+  dplyr::arrange(`Median ratio`)
+names(prev_summary)[1] <- "Intervention"
+display_table(prev_summary)
+```
+
+## Interventions & Outcomes {.tabset}
+
+::: {.panel-tabset}
+
+### By Intervention
 
 The table below groups specific drugs, supplements, and procedures into broader categories.
 Low-dose naltrexone and nirmatrelvir/ritonavir have the most reported outcomes, though many of those come from observational rather than randomised studies.
@@ -114,7 +203,7 @@ if (has_data && "intervention_category" %in% names(effects)) {
 }
 ```
 
-## Outcome Measures {#sec-outcomes}
+### By Outcome Measure
 
 As with psychological interventions, outcome measurement varies widely.
 The table below maps each instrument to its domain — making it easier to spot that, for example, three different fatigue scales are measuring the same underlying construct.
@@ -136,7 +225,7 @@ if (has_data && "outcome_measure" %in% names(effects)) {
 }
 ```
 
-## Outcomes by Domain {#sec-domains}
+### By Domain
 
 Grouping by outcome domain cuts through the instrument heterogeneity.
 The bar chart shows where the evidence concentrates; the summary table pools effect sizes within each domain.
@@ -223,6 +312,8 @@ domain_summary <- purrr::imap_dfr(domain_fits, \(fit, dom) {
 display_table(domain_summary)
 ```
 
+:::
+
 ## Dosing & Protocol {#sec-dose}
 
 Dosing information matters for biomedical interventions in a way it does not for CBT.
@@ -245,8 +336,10 @@ if (has_data && "dose" %in% names(effects)) {
 
 ## PEM Assessment {#sec-pem}
 
+::: {.key-finding}
 Post-exertional malaise (PEM) is the hallmark symptom of ME/CFS and a defining feature of Long COVID for many patients.
 Whether a biomedical trial assessed PEM matters less for safety than in exercise trials, but it is still relevant — some pharmacological interventions aim specifically to reduce PEM, and knowing whether they measured it tells us whether they could detect their own target outcome.
+:::
 
 ```{r}
 #| label: pem-status
@@ -300,7 +393,7 @@ if (has_data && "adverse_events_reported" %in% names(effects)) {
 }
 ```
 
-::: {.callout-note}
+::: {.callout-note collapse="true"}
 ## Data Status
 
 ```{r}

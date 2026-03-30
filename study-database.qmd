@@ -1,18 +1,48 @@
 ---
 title: "Study Database"
+subtitle: "Interactive database of all identified studies"
+toc: false
+number-sections: false
 ---
 
 ```{r}
 #| label: setup
 #| include: false
+library(targets)
+tar_config_set(store = here::here("_targets"))
 source("R/utils.R")
-studies <- read_study_database()
+studies <- targets::tar_read(studies)
 has_data <- nrow(studies) > 0
 ```
 
-## All Studies
-
+::: {.lead}
 Interactive table of all studies in the database, with filtering and search.
+:::
+
+```{r}
+#| label: prisma-counts
+#| eval: !expr has_data
+#| results: asis
+#| echo: false
+if (has_data) {
+  n_identified <- nrow(studies)
+  n_screened <- sum(studies$llm_relevant | studies$human_verified, na.rm = TRUE)
+  n_excluded_screen <- n_identified - n_screened
+  n_assessed <- sum(studies$human_verified, na.rm = TRUE)
+  n_included <- sum(studies$included, na.rm = TRUE)
+  n_excluded_full <- n_assessed - n_included
+  n_extracted <- sum(studies$data_extracted, na.rm = TRUE)
+
+  cat(sprintf('<div class="study-count"><span class="count-number">%d</span><span class="count-label">Identified</span></div>', n_identified))
+  cat(sprintf('<div class="study-count"><span class="count-number">%d</span><span class="count-label">Screened</span></div>', n_screened))
+  cat(sprintf('<div class="study-count"><span class="count-number">%d</span><span class="count-label">Included</span></div>', n_included))
+  cat(sprintf('<div class="study-count"><span class="count-number">%d</span><span class="count-label">Data extracted</span></div>', n_extracted))
+}
+```
+
+::: {.panel-tabset}
+
+## All Studies
 
 ```{r}
 #| label: study-table
@@ -94,6 +124,8 @@ if (file.exists(log_path)) {
   cat("*No search log found.*\n")
 }
 ```
+
+:::
 
 ## Database Schema
 

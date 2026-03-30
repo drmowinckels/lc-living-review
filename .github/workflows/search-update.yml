@@ -14,6 +14,7 @@ jobs:
     env:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      RENV_PROFILE: search
 
     steps:
       - uses: actions/checkout@v4
@@ -22,32 +23,36 @@ jobs:
         with:
           use-public-rspm: true
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
+      - name: Cache renv (search profile)
+        uses: actions/cache@v4
         with:
-          packages: |
-            any::here
-            any::arrow
-            any::europepmc
-            any::httr2
-            any::jsonlite
-            any::dplyr
-            any::cli
-            any::glue
-            any::xml2
-            any::purrr
-          cache-version: 1
+          path: renv/library
+          key: renv-search-${{ runner.os }}-${{ hashFiles('renv/profiles/search/renv.lock') }}
+          restore-keys: renv-search-${{ runner.os }}-
+
+      - name: Restore renv (search profile)
+        run: |
+          install.packages("renv", repos = "https://cloud.r-project.org")
+          renv::restore(prompt = FALSE)
+        shell: Rscript {0}
 
       - name: Run search pipeline
         run: Rscript .github/scripts/run-search.R
 
-      - name: Audit outcome domain categories (first Monday of month)
+      - name: Monthly audits (first Monday of month)
         run: |
           DAY=$(date -u +%d)
           if [ "$DAY" -le 7 ]; then
+            echo "=== Outcome domain audit ==="
             Rscript scripts/audit-categories.R
+            echo "=== Data quality audit ==="
+            Rscript scripts/audit-data-quality.R
           else
-            echo "Skipping — not the first week of the month"
+            echo "Skipping monthly audits — not the first week of the month"
           fi
+
+      - name: Re-extract manual studies (until rate limited)
+        run: Rscript scripts/reextract-manual.R
 
       - name: Check for changes
         id: changes
@@ -80,6 +85,8 @@ jobs:
     permissions:
       contents: write
       pages: write
+    env:
+      RENV_PROFILE: default
 
     steps:
       - uses: actions/checkout@v4
@@ -90,33 +97,24 @@ jobs:
         with:
           use-public-rspm: true
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
+      - name: Cache renv (default profile)
+        uses: actions/cache@v4
         with:
-          packages: |
-            any::here
-            any::arrow
-            any::metafor
-            any::ggplot2
-            any::dplyr
-            any::purrr
-            any::glue
-            any::cli
-            any::gt
-            any::scales
-            any::jsonlite
-            any::europepmc
-            any::pdftools
-            any::DiagrammeR
-            any::httr2
-            any::xml2
-            any::readxl
-            any::DT
-          cache-version: 1
+          path: renv/library
+          key: renv-default-${{ runner.os }}-${{ hashFiles('renv.lock') }}
+          restore-keys: renv-default-${{ runner.os }}-
+
+      - name: Restore renv (default profile)
+        run: |
+          install.packages("renv", repos = "https://cloud.r-project.org")
+          renv::restore(prompt = FALSE)
+        shell: Rscript {0}
 
       - uses: quarto-dev/quarto-actions/setup@v2
 
-      - name: Render site
-        run: quarto render
+      - name: Run targets pipeline
+        run: targets::tar_make()
+        shell: Rscript {0}
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4

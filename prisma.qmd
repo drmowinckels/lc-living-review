@@ -7,6 +7,8 @@ aliases:
 ```{r}
 #| label: setup
 #| include: false
+library(targets)
+tar_config_set(store = here::here("_targets"))
 source(here::here("R/utils.R"))
 p <- prisma_counts()
 ```
@@ -27,7 +29,7 @@ n_eligible      <- format(p$n_eligible,      big.mark = ",")
 n_extracted     <- format(p$n_extracted,     big.mark = ",")
 n_not_extracted <- format(p$n_not_extracted, big.mark = ",")
 
-db <- read_study_database()
+db <- targets::tar_read(studies)
 extracted <- db[!is.na(db$data_extracted) & db$data_extracted, ]
 
 category_labels <- c(
@@ -93,8 +95,7 @@ Studies are classified into review categories based on LLM screening. A single s
 
 ```{r}
 #| label: topic-table
-source(here::here("R/utils.R"))
-db <- read_study_database()
+db <- targets::tar_read(studies)
 
 has_proto <- "is_protocol" %in% names(db)
 

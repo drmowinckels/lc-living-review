@@ -1,66 +1,127 @@
 ---
 title: "Living Review: Long COVID & ME/CFS"
 subtitle: "A living systematic review and meta-analysis"
+toc: false
+number-sections: false
 ---
 
 ```{r}
 #| label: setup
 #| include: false
+library(targets)
+tar_config_set(store = here::here("_targets"))
 source("R/utils.R")
-studies <- read_study_database()
+studies <- targets::tar_read(studies)
 ```
 
-## About This Review
-
-This is a **living systematic review** of research on Long COVID (post-COVID condition) and Myalgic Encephalomyelitis/Chronic Fatigue Syndrome (ME/CFS). It is updated automatically as new research is published, with periodic manual verification and data extraction.
-
-The review covers four domains:
-
-1. **[Treatment Effectiveness](reviews/treatment-effectiveness.qmd)** — Comparative effectiveness of interventions including pacing, graded exercise therapy, CBT, pharmacological treatments, and supplements
-2. **[Prevalence](reviews/prevalence.qmd)** — Prevalence estimates for Long COVID and ME/CFS symptoms
-3. **[PEM Prevalence](reviews/pem-prevalence.qmd)** — Prevalence and characterisation of post-exertional malaise
-4. **[Recovery Trajectories](reviews/recovery-trajectories.qmd)** — Natural history and recovery patterns, stratified by PEM status
-
-Clinical studies and patient-reported outcome studies are included but analysed separately within each domain.
+::: {.lead}
+This is a **living systematic review** of research on Long COVID (post-COVID condition) and Myalgic Encephalomyelitis/Chronic Fatigue Syndrome (ME/CFS). Updated automatically as new research is published, with periodic manual verification and data extraction.
+:::
 
 ## Current Status
 
 ```{r}
-#| label: status-summary
+#| label: status-metrics
+#| results: asis
+#| echo: false
 if (nrow(studies) > 0) {
   n_total <- nrow(studies)
   n_included <- sum(studies$included, na.rm = TRUE)
   n_pending <- sum(!studies$human_verified, na.rm = TRUE)
   n_extracted <- sum(studies$data_extracted, na.rm = TRUE)
-  date_range <- range(studies$date_added, na.rm = TRUE)
 
-  cat(sprintf(
-    "- **Studies identified**: %d\n- **Studies included**: %d\n- **Pending review**: %d\n- **Data extracted**: %d\n- **Database period**: %s to %s\n",
-    n_total, n_included, n_pending, n_extracted,
-    date_range[1], date_range[2]
-  ))
+  cat('<div class="status-grid">\n')
+  cat(sprintf('<div class="status-metric"><span class="metric-value">%d</span><span class="metric-label">Studies identified</span></div>\n', n_total))
+  cat(sprintf('<div class="status-metric"><span class="metric-value">%d</span><span class="metric-label">Included</span></div>\n', n_included))
+  cat(sprintf('<div class="status-metric"><span class="metric-value">%d</span><span class="metric-label">Pending review</span></div>\n', n_pending))
+  cat(sprintf('<div class="status-metric"><span class="metric-value">%d</span><span class="metric-label">Data extracted</span></div>\n', n_extracted))
+  cat('</div>\n')
 } else {
   cat("*No studies in database yet. Run the search pipeline to populate.*\n")
 }
 ```
 
-## Methods
+## Review Domains
 
-See the [Methods](methods.qmd) page for search strategies, inclusion/exclusion criteria, data extraction procedures, and quality assessment framework.
+::: {.grid}
 
-## How It Works
+::: {.g-col-6}
+::: {.domain-card .domain-card--treatment}
+### Treatment Effectiveness
 
-```{mermaid}
-flowchart LR
-    A[Automated\nPubMed Search] --> B[LLM\nScreening]
-    B --> C[Human\nVerification]
-    C --> D[Data\nExtraction]
-    D --> E[Meta-Analysis\n& Plots]
-    E --> F[Quarto\nWebsite]
-```
+Comparative effectiveness of interventions including pacing, graded exercise therapy, CBT, pharmacological treatments, and supplements.
 
-1. **Automated search**: GitHub Actions runs weekly PubMed/Europe PMC searches using predefined queries
-2. **LLM screening**: New results are screened by an LLM for relevance against inclusion criteria
-3. **Human verification**: Flagged studies are reviewed manually
-4. **Data extraction**: Included studies have outcomes extracted to structured CSVs
-5. **Analysis & publication**: Meta-analyses re-run and the website re-renders automatically
+[Explore treatment evidence](reviews/treatment-effectiveness.qmd)
+:::
+:::
+
+::: {.g-col-6}
+::: {.domain-card .domain-card--prevalence}
+### Prevalence
+
+Prevalence estimates for Long COVID and ME/CFS symptoms across populations and diagnostic criteria.
+
+[View prevalence data](reviews/prevalence.qmd)
+:::
+:::
+
+::: {.g-col-6}
+::: {.domain-card .domain-card--pem}
+### PEM Prevalence
+
+Prevalence and characterisation of post-exertional malaise — the hallmark symptom of ME/CFS.
+
+[Explore PEM evidence](reviews/pem-prevalence.qmd)
+:::
+:::
+
+::: {.g-col-6}
+::: {.domain-card .domain-card--recovery}
+### Recovery Trajectories
+
+Natural history and recovery patterns, stratified by PEM status and condition severity.
+
+[View recovery data](reviews/recovery-trajectories.qmd)
+:::
+:::
+
+:::
+
+Clinical studies and patient-reported outcome studies are included but analysed separately within each domain.
+
+## How It Works {.unnumbered}
+
+::: {.pipeline-flow}
+::: {.pipeline-step}
+[🔍]{.step-icon}
+[Automated Search]{.step-label}
+[Weekly Europe PMC queries]{.step-detail}
+:::
+::: {.pipeline-step}
+[🤖]{.step-icon}
+[LLM Screening]{.step-label}
+[Relevance classification]{.step-detail}
+:::
+::: {.pipeline-step}
+[👁]{.step-icon}
+[Human Verification]{.step-label}
+[Manual review of flagged studies]{.step-detail}
+:::
+::: {.pipeline-step}
+[📊]{.step-icon}
+[Data Extraction]{.step-label}
+[Structured outcome data]{.step-detail}
+:::
+::: {.pipeline-step}
+[📈]{.step-icon}
+[Meta-Analysis]{.step-label}
+[Pooled estimates & plots]{.step-detail}
+:::
+::: {.pipeline-step}
+[🌐]{.step-icon}
+[Publication]{.step-label}
+[Auto-rendered Quarto site]{.step-detail}
+:::
+:::
+
+See the [Methods](methods.qmd) page for full details on search strategies, inclusion criteria, data extraction, and quality assessment.

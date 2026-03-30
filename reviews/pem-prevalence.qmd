@@ -1,5 +1,6 @@
 ---
 title: "PEM Prevalence"
+subtitle: "How common is post-exertional malaise, and why do estimates vary so widely?"
 ---
 
 ```{r}
@@ -14,14 +15,68 @@ pem_data <- read_extracted_data("pem_prevalence")
 has_data <- nrow(pem_data) > 0
 ```
 
-## Overview
+```{r}
+#| label: data-pending
+#| results: asis
+#| echo: false
+#| eval: !expr '!has_data'
+cat("::: {.callout-note}\n")
+cat("## Data not yet available\n\n")
+cat("The PEM prevalence data extraction has not been completed yet. ")
+cat("This review will be populated once the extraction pipeline includes the `pem_prevalence` domain. ")
+cat("Raw data may exist in `data/extracted/pem_prevalence.csv` but has not been integrated into the extraction schema.\n")
+cat(":::\n")
+```
 
+::: {.lead}
 Post-exertional malaise (PEM) -- the worsening of symptoms after physical or cognitive exertion that would not have caused problems before illness -- is the single most important symptom for distinguishing ME/CFS from other fatigue conditions.
 In Long COVID, PEM identifies the subset of patients whose illness most closely resembles ME/CFS, and who are most likely to be harmed by graded exercise programmes.
 How common PEM actually is depends heavily on how you ask: a single screening question captures fewer cases than a validated questionnaire, and diagnostic criteria that require PEM will by definition find it in 100% of qualifying patients.
 This section pools PEM prevalence estimates and breaks them down by method and criteria so you can see how those choices shape the numbers.
+:::
+
+::: {.at-a-glance}
+## At a Glance {#sec-lay}
+
+Post-exertional malaise (PEM) — feeling worse after activity — is the hallmark symptom of ME/CFS and is common in Long COVID.
+How many patients experience PEM depends heavily on how researchers ask about it.
+
+```{r}
+#| label: study-count-badge
+#| eval: !expr has_data
+#| results: asis
+if (has_data) {
+  cat(sprintf(
+    '<div class="study-count"><span class="count-number">%d</span><span class="count-label">PEM estimates from %d studies</span></div>\n',
+    nrow(pem_data), length(unique(pem_data$study_id))
+  ))
+}
+```
+
+```{r}
+#| label: lay-pem-waffle-overview
+#| eval: !expr has_data
+#| fig-height: 5
+#| fig-alt: "Waffle chart showing the approximate percentage of patients who experience post-exertional malaise."
+#| fig-cap: "How common is PEM? Each coloured square represents 1% of patients. In studies that properly assess PEM using validated questionnaires, the prevalence is typically higher than in studies using simple screening questions."
+if (has_data && nrow(pem_data) >= 2) {
+  median_pem <- round(median(pem_data$prevalence[!is.na(pem_data$prevalence)] * 100, na.rm = TRUE))
+  if (!is.na(median_pem) && median_pem > 0) {
+    lay_waffle(median_pem, 100,
+               yes_label = "Experience PEM",
+               no_label = "Do not report PEM",
+               title = "How common is post-exertional malaise?",
+               subtitle = paste0("Median across studies: ~", median_pem, "%"))
+  }
+}
+```
+:::
+
+<hr class="section-divider">
 
 ## Pooled PEM Prevalence
+
+::: {.panel-tabset}
 
 ### In Long COVID
 
@@ -63,12 +118,16 @@ if (nrow(pem_mecfs) >= 2) {
 }
 ```
 
+:::
+
 ## By Assessment Method
 
+::: {.key-finding}
 The way PEM is measured substantially affects reported prevalence.
 A single yes/no screening question will miss patients who experience PEM but do not recognise the term.
 Validated instruments like the DePaul Symptom Questionnaire (DSQ) capture more cases because they describe the experience in concrete terms.
 Activity monitoring and two-day cardiopulmonary exercise testing (CPET) provide objective evidence but are rarely used in large cohorts.
+:::
 
 ```{r}
 #| label: pem-by-method
@@ -103,15 +162,7 @@ if (has_data && any(!is.na(pem_data$diagnostic_criteria))) {
 }
 ```
 
-## Lay Summary {#sec-lay}
-
-```{r}
-#| label: lay-pem
-#| eval: !expr has_data
-cat("*How common is PEM? Visual summary for non-specialist audiences.*\n")
-```
-
-::: {.callout-note}
+::: {.callout-note collapse="true"}
 ## Living Review
 
 This page is part of a living systematic review and is updated as new studies are identified, screened, and extracted.

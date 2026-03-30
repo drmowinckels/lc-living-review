@@ -7,14 +7,16 @@ aliases:
 ```{r}
 #| label: setup
 #| include: false
+library(targets)
+tar_config_set(store = here::here("_targets"))
 source(here::here("R/utils.R"))
 source(here::here("R/meta-analysis.R"))
 source(here::here("R/plots.R"))
 
-studies <- read_study_database()
-cbt <- read_extracted_data("treatment_cbt_psych")
-biomed <- read_extracted_data("treatment_biomedical")
-quality <- read_quality_ratings()
+studies <- targets::tar_read(studies)
+cbt <- targets::tar_read(cbt_effects)
+biomed <- targets::tar_read(bio_effects)
+quality <- targets::tar_read(quality)
 
 has_cbt <- nrow(cbt) > 0
 has_biomed <- nrow(biomed) > 0
@@ -52,6 +54,48 @@ if (nrow(treatment_studies) > 0) {
   n_psych <- counts$n[counts$search_topic == "treatment_cbt_psych"] %||% 0L
   n_bio <- counts$n[counts$search_topic == "treatment_biomedical"] %||% 0L
   cli::cat_line(glue::glue("**{n_psych} psychological/behavioural** and **{n_bio} biomedical** studies currently included."))
+}
+```
+
+```{r}
+#| label: lay-combined-data
+#| include: false
+combined <- NULL
+if (has_both) {
+  shared_cols <- intersect(names(cbt), names(biomed))
+  combined <- dplyr::bind_rows(
+    dplyr::select(cbt, dplyr::all_of(shared_cols)),
+    dplyr::select(biomed, dplyr::all_of(shared_cols))
+  )
+}
+```
+
+## At a Glance {#sec-lay}
+
+These charts present the same data as above, but designed for a general audience.
+
+```{r}
+#| label: lay-paradigm-bar
+#| eval: !expr has_both
+#| fig-height: 7
+#| fig-alt: "Grouped bar chart showing the number of study results for biomedical vs psychological treatments across different symptom areas like fatigue, physical function, and pain."
+#| fig-cap: "Where is the evidence? This chart shows how many study results exist for each symptom area, split by whether the treatment is biomedical (blue) or psychological/behavioural (orange)."
+lay_paradigm_compare(cbt, biomed)
+```
+
+```{r}
+#| label: lay-pem-waffle
+#| eval: !expr has_both
+#| fig-height: 5
+#| fig-alt: "Waffle chart where each of 100 squares represents one percent. Very few squares are coloured, showing that almost no treatment studies measured post-exertional malaise."
+#| fig-cap: "Did studies check for crashes after activity? Each square represents 1% of all treatment study results. The coloured squares show how many actually measured post-exertional malaise (PEM) -- the hallmark symptom of ME/CFS."
+if (has_both && !is.null(combined) && "pem_assessed" %in% names(combined)) {
+  n_pem <- sum(combined$pem_assessed, na.rm = TRUE)
+  n_total <- nrow(combined)
+  lay_waffle(n_pem, n_total,
+             yes_label = "Measured PEM",
+             no_label = "Did not measure PEM",
+             title = "How many treatment studies checked for post-exertional crashes?")
 }
 ```
 

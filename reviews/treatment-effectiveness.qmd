@@ -1,5 +1,6 @@
 ---
 title: "Treatment Effectiveness"
+subtitle: "Pooled evidence across all intervention types"
 ---
 
 ```{r}
@@ -15,10 +16,34 @@ quality <- read_quality_ratings()
 has_data <- nrow(effects) > 0
 ```
 
-## Overview
+```{r}
+#| label: data-pending
+#| results: asis
+#| echo: false
+#| eval: !expr '!has_data'
+cat("::: {.callout-note}\n")
+cat("## Data not yet available\n\n")
+cat("The treatment effectiveness data extraction has not been completed yet. ")
+cat("This review will be populated once the extraction pipeline includes the `treatment_effectiveness` domain. ")
+cat("In the meantime, see the [CBT & Psychological](treatment-cbt-psych.qmd) and [Biomedical](treatment-biomedical.qmd) treatment reviews for available evidence.\n")
+cat(":::\n")
+```
 
-Pooling treatment effects across heterogeneous interventions -- pacing alongside pharmacology, CBT alongside supplements -- gives a bird's-eye view of the field, but it is deliberately broad.
+::: {.lead}
+Pooling treatment effects across heterogeneous interventions — pacing alongside pharmacology, CBT alongside supplements — gives a bird's-eye view of the field, but it is deliberately broad.
 The pooled estimate answers a general question: across everything that has been tried, is there a detectable signal of benefit?
+:::
+
+```{r}
+#| label: included-studies
+#| results: asis
+#| echo: false
+#| eval: !expr has_data
+treatment_studies <- studies[studies$search_topic == "treatment_effectiveness" & studies$included, ]
+n <- nrow(treatment_studies)
+cat(sprintf('<div class="study-count"><span class="count-number">%d</span><span class="count-label">studies included in<br>treatment review</span></div>\n', n))
+```
+
 That number matters less than the variation around it: high heterogeneity tells us that "what works" depends heavily on which intervention, which population, and which outcome you look at.
 
 This review examines the comparative effectiveness of interventions for Long COVID and ME/CFS, including:
@@ -31,18 +56,59 @@ This review examines the comparative effectiveness of interventions for Long COV
 
 Clinical and patient-reported outcome studies are analysed separately because they answer different questions and carry different biases.
 
+::: {.at-a-glance}
+
+## At a Glance {#sec-lay}
+
+These charts present the evidence in formats designed to be accessible without statistical training.
+
 ```{r}
-#| label: included-studies
+#| label: lay-lollipop
 #| eval: !expr has_data
-treatment_studies <- studies[studies$search_topic == "treatment_effectiveness" & studies$included, ]
-cat(sprintf("**%d studies included** in treatment effectiveness review.\n", nrow(treatment_studies)))
+#| fig-height: 8
+#| fig-alt: "Lollipop chart showing treatment effects with plain-language labels like small, moderate, or large benefit."
+#| fig-cap: "How much does each type of treatment help? Dot position shows effect size; labels translate the statistical result into plain language."
+forest_df_all <- if (has_data) prepare_forest_data(effects) else data.frame()
+if (nrow(forest_df_all) >= 2 && "intervention_category" %in% names(forest_df_all)) {
+  lay_lollipop(forest_df_all, group_col = "intervention_category")
+}
 ```
 
-## Clinical Studies {#sec-clinical}
+```{r}
+#| label: lay-treatment-verdict
+#| eval: !expr has_data
+#| fig-height: 8
+#| fig-alt: "Dot plot showing whether each treatment is likely helpful, possibly helpful, uncertain, or may not help, using traffic-light colours."
+#| fig-cap: "At a glance: does the treatment help? Green dots mean the evidence points towards benefit. Grey means we cannot tell yet."
+if (nrow(forest_df_all) >= 2 && "intervention_category" %in% names(forest_df_all)) {
+  lay_treatment_summary(forest_df_all, group_col = "intervention_category")
+}
+```
 
-Clinical outcomes -- measured by clinicians, laboratory tests, or objective performance assessments -- tend to be less susceptible to expectation bias than self-report measures.
+```{r}
+#| label: lay-grade-bar
+#| eval: !expr has_data
+#| fig-height: 4
+#| fig-alt: "Stacked bar chart showing how many outcomes have very low, low, moderate, or high certainty evidence."
+#| fig-cap: "How confident are we in these results? Most treatment evidence is rated as very uncertain or uncertain, meaning we need more and better studies."
+grade <- read_grade_data()
+if (nrow(grade) > 0) {
+  lay_grade_bar(grade)
+}
+```
+
+:::
+
+---
+
+## Clinical vs Patient-Reported Studies {.tabset}
+
+::: {.panel-tabset}
+
+### Clinical Studies
+
+Clinical outcomes — measured by clinicians, laboratory tests, or objective performance assessments — tend to be less susceptible to expectation bias than self-report measures.
 When a treatment shows an effect on clinical outcomes, it provides stronger evidence that something physiological is changing.
-The forest plot below displays individual study effects alongside the pooled estimate, so you can see both the overall signal and how much studies disagree.
 
 ```{r}
 #| label: forest-clinical
@@ -53,7 +119,7 @@ clinical <- effects[effects$reporting_type == "clinical", ]
 if (nrow(clinical) >= 2) {
   es <- compute_effect_sizes(clinical, outcome_type = "continuous")
   fit <- run_meta(es)
-  forest_gg(fit, title = "Treatment Effects \u2014 Clinical Studies")
+  forest_gg(fit, title = "Treatment Effects — Clinical Studies")
 }
 ```
 
@@ -63,17 +129,16 @@ if (nrow(clinical) >= 2) {
 if (nrow(clinical) >= 2) {
   het <- heterogeneity_summary(fit)
   cat(sprintf(
-    "**Heterogeneity**: Q(%d) = %.1f, p = %.3f; I\u00b2 = %.1f%%; \u03c4\u00b2 = %.3f\n",
+    "**Heterogeneity**: Q(%d) = %.1f, p = %.3f; I² = %.1f%%; τ² = %.3f\n",
     het$Q_df, het$Q, het$Q_p, het$I2, het$tau2
   ))
 }
 ```
 
-### Subgroup: By PEM Status
+#### Subgroup: By PEM Status
 
 Post-exertional malaise (PEM) is a cardinal feature of ME/CFS and common in Long COVID.
 Trials that confirm PEM in their participants may be studying a biologically distinct population.
-If PEM-confirmed cohorts respond differently to treatment -- especially to exercise-based interventions -- that tells us PEM status should be a standard stratification variable in future trials.
 
 ```{r}
 #| label: subgroup-pem-clinical
@@ -86,11 +151,10 @@ if (nrow(clinical) >= 2 && any(!is.na(clinical$pem_status))) {
 }
 ```
 
-## Patient-Reported Studies {#sec-patient-reported}
+### Patient-Reported Studies
 
 Patient-reported outcomes capture what matters most to the people living with these conditions: fatigue severity, functional capacity, quality of life.
 They are also more vulnerable to placebo effects and unblinding, which is why we analyse them separately from clinical measures.
-A treatment that improves patient-reported outcomes without moving clinical markers may reflect genuine subjective benefit, a placebo response, or a real effect that our clinical tools are too blunt to detect.
 
 ```{r}
 #| label: forest-patient
@@ -101,25 +165,16 @@ patient <- effects[effects$reporting_type == "patient_reported", ]
 if (nrow(patient) >= 2) {
   es_pat <- compute_effect_sizes(patient, outcome_type = "continuous")
   fit_pat <- run_meta(es_pat)
-  forest_gg(fit_pat, title = "Treatment Effects \u2014 Patient-Reported Studies")
+  forest_gg(fit_pat, title = "Treatment Effects — Patient-Reported Studies")
 }
 ```
 
-## Lay Summary {#sec-lay}
-
-```{r}
-#| label: lay-summary
-#| eval: !expr has_data
-#| fig-alt: "Simplified visualisation summarising treatment findings for a general audience."
-#| fig-cap: "What patients and clinicians report about treatments"
-cat("*This section provides accessible visualisations for non-specialist audiences.*\n\n")
-```
+:::
 
 ## Study Quality {#sec-quality}
 
 Risk of bias and GRADE ratings determine how much weight the pooled estimates deserve.
 A meta-analysis built on studies with high risk of bias will produce a precise but potentially misleading number.
-The traffic light plot below shows domain-level bias judgements for each study, and the GRADE heatmap summarises overall evidence certainty for each comparison.
 
 ```{r}
 #| label: rob-plot
@@ -145,8 +200,7 @@ if (nrow(treatment_quality) > 0 && any(!is.na(treatment_quality$grade))) {
 ## Publication Bias {#sec-pub-bias}
 
 Funnel plot asymmetry can suggest that small studies with negative results are missing from the evidence base.
-If the plot shows a gap in the lower-left region (small studies with small or negative effects), that is a warning sign: the pooled estimate may be inflated because unfavourable results were never published or were published in harder-to-find venues.
-Asymmetry alone does not prove publication bias -- it can also reflect genuine heterogeneity or differences in study quality -- but it warrants caution.
+Asymmetry alone does not prove publication bias — it can also reflect genuine heterogeneity or differences in study quality — but it warrants caution.
 
 ```{r}
 #| label: funnel-plot
@@ -162,7 +216,6 @@ if (exists("fit") && fit$k >= 5) {
 
 Leave-one-out analysis removes each study in turn and re-estimates the pooled effect.
 If the overall result shifts substantially when a single study is dropped, that study is driving the conclusion and deserves closer scrutiny.
-A robust finding holds up regardless of which study is excluded.
 
 ```{r}
 #| label: leave-one-out
@@ -173,7 +226,7 @@ if (exists("fit") && fit$k >= 3) {
 }
 ```
 
-::: {.callout-note}
+::: {.callout-note collapse="true"}
 ## Data Status
 
 ```{r}
@@ -189,12 +242,6 @@ if (!has_data) {
   ))
 }
 ```
-:::
 
-::: {.callout-tip}
-## Living Review
-
-This page is part of a living systematic review.
-New studies are incorporated as they are identified through automated search updates, and the meta-analytic estimates on this page will shift as the evidence base grows.
-If you are reading a cached version, check the data status note above for the last update date.
+This is a living review. New studies are incorporated as they are identified through automated search updates.
 :::

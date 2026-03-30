@@ -5,8 +5,10 @@ title: "Study Review Tool"
 ```{r}
 #| label: setup
 #| include: false
+library(targets)
+tar_config_set(store = here::here("_targets"))
 source(here::here("R/utils.R"))
-studies <- read_study_database()
+studies <- targets::tar_read(studies)
 ```
 
 The review tool is a Shiny application for screening studies and extracting data. It reads and writes to the same `studies.parquet` database that powers this website.

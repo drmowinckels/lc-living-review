@@ -1,5 +1,6 @@
 ---
 title: "Treatment: CBT & Psychological Interventions"
+subtitle: "Evidence for behavioural and psychological approaches"
 aliases:
   - /reviews/cbt/
   - /reviews/psychological/
@@ -8,52 +9,41 @@ aliases:
 ```{r}
 #| label: setup
 #| include: false
+library(targets)
+tar_config_set(store = here::here("_targets"))
 source(here::here("R/utils.R"))
 source(here::here("R/meta-analysis.R"))
 source(here::here("R/plots.R"))
 
-studies <- read_study_database()
-effects <- read_extracted_data("treatment_cbt_psych")
-quality <- read_quality_ratings()
+studies <- tar_read(studies)
+effects <- tar_read(cbt_effects)
+quality <- tar_read(quality)
 has_data <- nrow(effects) > 0
 ```
 
-## Overview
-
+::: {.lead}
 Psychological and behavioural interventions are among the most studied — and most debated — approaches for Long COVID and ME/CFS.
 This review covers CBT, graded exercise therapy (GET), acceptance and commitment therapy (ACT), the Lightning Process, mindfulness, pacing programmes, and self-management interventions.
+:::
+
+```{r}
+#| label: included-studies
+#| results: asis
+#| echo: false
+counts <- tar_read(cbt_study_counts)
+cat(sprintf('<div class="study-count"><span class="count-number">%d</span><span class="count-label">studies with<br>results</span></div>', counts$n_results))
+cat(sprintf('<div class="study-count"><span class="count-number">%d</span><span class="count-label">randomised<br>controlled trials</span></div>', counts$n_rct))
+cat(sprintf('<div class="study-count"><span class="count-number">%d</span><span class="count-label">registered<br>protocols</span></div>\n', counts$n_protocols))
+```
 
 The evidence base is large, but the picture is complicated.
 Many trials use different outcome measures, different diagnostic criteria, and different definitions of what counts as "improvement."
 The data below reflects that heterogeneity honestly.
 
 ```{r}
-#| label: included-studies
-#| results: asis
-topic_studies <- studies |>
-  dplyr::filter(
-    !is.na(search_topic), search_topic == "treatment_cbt_psych",
-    !is.na(llm_relevant), llm_relevant
-  )
-if (nrow(topic_studies) > 0) {
-  n_proto <- if ("is_protocol" %in% names(topic_studies)) sum(topic_studies$is_protocol, na.rm = TRUE) else 0L
-  n_results <- nrow(topic_studies) - n_proto
-  n_rct <- sum(grepl("RCT|random", topic_studies$llm_study_type %||% "", ignore.case = TRUE) &
-    !topic_studies$is_protocol, na.rm = TRUE)
-  cli::cat_line(glue::glue("**{n_results} studies with results** ({n_rct} RCTs), plus {n_proto} registered protocols."))
-}
-```
-
-## Effects by Intervention {#sec-effects-intervention}
-
-Pooling every psychological intervention into a single number hides more than it reveals.
-The plot below breaks the evidence apart by intervention category — each diamond is the pooled effect for one type of intervention, sized by the number of study–outcome pairs contributing.
-This tells you which approaches have been studied most and where the effect estimates point.
-
-```{r}
 #| label: forest-data
 #| include: false
-forest_df <- if (has_data) prepare_forest_data(effects) else data.frame()
+forest_df <- tar_read(cbt_forest)
 has_forest <- nrow(forest_df) >= 2
 intervention_forest_h <- 6
 domain_forest_h <- 6
@@ -66,6 +56,54 @@ if (has_forest && "outcome_domain" %in% names(forest_df)) {
   domain_forest_h <- bar_height(n_dom)
 }
 ```
+
+::: {.at-a-glance}
+
+## At a Glance {#sec-lay}
+
+```{r}
+#| label: lay-psych-lollipop
+#| eval: !expr 'has_forest && "intervention_category" %in% names(forest_df)'
+#| fig-height: 8
+#| fig-alt: "Lollipop chart showing how much each psychological or behavioural treatment helps, with plain-language labels."
+#| fig-cap: "How much does each treatment help? Each dot represents the pooled result from all studies of that treatment. Labels describe the size of the effect in plain language."
+lay_lollipop(forest_df, group_col = "intervention_category",
+             title = "Psychological & behavioural treatments: how much do they help?")
+```
+
+```{r}
+#| label: lay-psych-verdict
+#| eval: !expr 'has_forest && "intervention_category" %in% names(forest_df)'
+#| fig-height: 8
+#| fig-alt: "Traffic-light dot plot showing whether each psychological treatment is likely helpful, uncertain, or may not help."
+#| fig-cap: "Does the treatment help? Green = evidence points towards benefit. Grey = we cannot tell from the available studies."
+lay_treatment_summary(forest_df, group_col = "intervention_category",
+                       title = "Psychological & behavioural treatments: does the evidence say they help?")
+```
+
+```{r}
+#| label: lay-pem-waffle-psych
+#| eval: !expr has_data
+#| fig-height: 5
+#| fig-alt: "Waffle chart showing that very few psychological treatment studies measured post-exertional malaise."
+#| fig-cap: "Did these studies check for crashes after activity? Each square = 1% of study results. This matters because exercise-based treatments can trigger post-exertional malaise in susceptible patients, and if a study does not measure it, it cannot detect this harm."
+if (has_data && "pem_assessed" %in% names(effects)) {
+  n_pem <- sum(effects$pem_assessed, na.rm = TRUE)
+  lay_waffle(n_pem, nrow(effects),
+             yes_label = "Measured PEM",
+             no_label = "Did not measure PEM",
+             title = "How many studies checked for post-exertional crashes?")
+}
+```
+
+:::
+
+<hr class="section-divider">
+
+## Effects by Intervention {#sec-effects-intervention}
+
+Pooling every psychological intervention into a single number hides more than it reveals.
+The plot below breaks the evidence apart by intervention category — each diamond is the pooled effect for one type of intervention, sized by the number of study–outcome pairs contributing.
 
 ```{r}
 #| label: intervention-forest
@@ -83,7 +121,6 @@ subgroup_forest(
 
 The same data, sliced differently.
 Here the pooling is by what was measured rather than what was done.
-This answers a different question: across all psychological interventions, which outcomes show the most consistent effects?
 
 ```{r}
 #| label: domain-forest
@@ -97,14 +134,14 @@ subgroup_forest(
 )
 ```
 
-## Interventions {#sec-interventions}
+## Interventions & Outcomes {.tabset}
+
+::: {.panel-tabset}
+
+### By Intervention
 
 The table below groups individual intervention names into broader categories.
-A single study may contribute multiple effect sizes — one per outcome — so the counts reflect reported outcomes, not unique trials.
-
 CBT and exercise-based approaches dominate the literature, but the category labels hide real diversity.
-"CBT" includes everything from face-to-face individual therapy to internet-delivered group programmes.
-"Exercise" spans supervised gym sessions to home-based walking programmes.
 
 ```{r}
 #| label: intervention-table
@@ -120,12 +157,10 @@ if (has_data && "intervention_category" %in% names(effects)) {
 }
 ```
 
-## Outcome Measures {#sec-outcomes}
+### By Outcome Measure
 
-Outcome measurement is one of the biggest sources of heterogeneity in this literature.
-The table below shows which instruments are used, grouped by the domain they measure.
+Outcome measurement is one of the biggest sources of heterogeneity.
 The same construct — fatigue, say — gets measured with the Chalder Fatigue Scale in one trial, the MFI-20 in another, and a simple VAS in a third.
-This makes direct comparison across studies harder than it should be.
 
 ```{r}
 #| label: outcome-table
@@ -144,12 +179,9 @@ if (has_data && "outcome_measure" %in% names(effects)) {
 }
 ```
 
-## Outcomes by Domain {#sec-domains}
+### By Domain
 
-Rather than comparing individual instruments, we can group outcomes into broad domains — fatigue, physical function, quality of life, and so on — to see where the evidence concentrates.
-
-The bar chart shows how many effect sizes fall into each domain.
-The summary table below it pools effect sizes within each domain that has enough studies for a meta-analysis (at least two with complete data).
+Rather than comparing individual instruments, we can group outcomes into broad domains to see where the evidence concentrates.
 
 ```{r}
 #| label: domain-bar-data
@@ -170,7 +202,7 @@ if (has_data && "outcome_domain" %in% names(effects)) {
 #| eval: !expr '!is.null(domain_df) && nrow(domain_df) > 0'
 #| fig-height: !expr domain_h
 #| fig-alt: "Horizontal bar chart showing the number of extracted effect sizes per outcome domain, with fatigue and physical function having the most"
-#| fig-cap: "Distribution of effect sizes across outcome domains. Each bar represents how many study–outcome pairs reported on that domain."
+#| fig-cap: "Distribution of effect sizes across outcome domains."
 ggplot(domain_df, aes(x = n, y = outcome_domain)) +
   geom_col(fill = cols_review["clinical"], width = 0.7) +
   geom_text(aes(label = n), hjust = -0.2, size = 3.5) +
@@ -231,11 +263,15 @@ domain_summary <- purrr::imap_dfr(domain_fits, \(fit, dom) {
 display_table(domain_summary)
 ```
 
+:::
+
 ## PEM Assessment {#sec-pem}
 
+::: {.key-finding}
 Post-exertional malaise (PEM) is the hallmark symptom of ME/CFS and a core feature of Long COVID.
 Whether a study assessed PEM matters because interventions that increase activity — like GET — can trigger PEM in susceptible patients.
 A trial that does not measure PEM cannot detect this harm.
+:::
 
 ```{r}
 #| label: pem-status
@@ -252,7 +288,6 @@ if (has_data && "pem_assessed" %in% names(effects)) {
 ## Risk of Bias {#sec-rob}
 
 Risk of bias ratings follow the Cochrane ROB2 tool for RCTs and ROBINS-I for observational studies.
-The table below shows overall judgements where quality assessment has been completed.
 
 ```{r}
 #| label: rob-summary
@@ -283,7 +318,7 @@ if (has_data && "adverse_events_reported" %in% names(effects)) {
 }
 ```
 
-::: {.callout-note}
+::: {.callout-note collapse="true"}
 ## Data Status
 
 ```{r}
@@ -297,6 +332,5 @@ if (!has_data) {
 }
 ```
 
-This is a living review.
-Data is extracted automatically from published studies and updated as new evidence becomes available.
+This is a living review. Data is extracted automatically and updated as new evidence becomes available.
 :::

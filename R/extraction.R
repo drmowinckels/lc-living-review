@@ -549,6 +549,47 @@ sanitize_extracted <- function(df) {
     df$effect_size[bogus_es] <- NA_real_
     df$ci_lower[bogus_es] <- NA_real_
     df$ci_upper[bogus_es] <- NA_real_
+    swapped_ci <- !is.na(df$ci_lower) & !is.na(df$ci_upper) & df$ci_lower > df$ci_upper
+    if (any(swapped_ci)) {
+      tmp <- df$ci_lower[swapped_ci]
+      df$ci_lower[swapped_ci] <- df$ci_upper[swapped_ci]
+      df$ci_upper[swapped_ci] <- tmp
+    }
+    es_outside <- !is.na(df$effect_size) & !is.na(df$ci_lower) & !is.na(df$ci_upper) &
+                  df$ci_lower != 0 & df$ci_upper != 0 &
+                  (df$effect_size < df$ci_lower - 0.01 | df$effect_size > df$ci_upper + 0.01)
+    if (any(es_outside)) {
+      df$ci_lower[es_outside] <- NA_real_
+      df$ci_upper[es_outside] <- NA_real_
+    }
+  }
+  for (grp in c("intervention", "comparator")) {
+    n_col <- paste0("n_", grp)
+    m_col <- paste0("mean_", grp)
+    s_col <- paste0("sd_", grp)
+    if (all(c(n_col, m_col) %in% names(df))) {
+      n0_with_data <- !is.na(df[[n_col]]) & df[[n_col]] == 0 & !is.na(df[[m_col]]) & df[[m_col]] != 0
+      if (any(n0_with_data)) df[[n_col]][n0_with_data] <- NA_integer_
+    }
+    if (all(c(s_col, m_col) %in% names(df))) {
+      zero_sd <- !is.na(df[[s_col]]) & df[[s_col]] == 0 & !is.na(df[[m_col]]) & df[[m_col]] != 0
+      if (any(zero_sd)) df[[s_col]][zero_sd] <- NA_real_
+    }
+    if (s_col %in% names(df)) {
+      neg_sd <- !is.na(df[[s_col]]) & df[[s_col]] < 0
+      if (any(neg_sd)) df[[s_col]][neg_sd] <- NA_real_
+    }
+  }
+  if ("effect_size_type" %in% names(df)) {
+    est <- tolower(trimws(df$effect_size_type))
+    est[est %in% c("smd", "cohen_d")] <- "smd"
+    est[est == "hedges_g"] <- "hedges_g"
+    est[est %in% c("odds_ratio", "hazard_ratio", "risk_ratio",
+                    "or", "hr", "rr", "aor", "ahr")] <- "ratio"
+    est[est %in% c("mean_difference", "mean_diff", "md",
+                    "raw_difference")] <- "mean_diff"
+    est[!is.na(est) & !est %in% c("smd", "hedges_g", "ratio", "mean_diff")] <- "other"
+    df$effect_size_type <- est
   }
   if ("outcome_domain" %in% names(df)) {
     df$outcome_domain_raw <- df$outcome_domain
@@ -568,9 +609,26 @@ sanitize_extracted <- function(df) {
     type = .null_str,
     description = "Specific intervention name, e.g. CBT, GET, ACT, LDN, IVIG"
   ),
+  intervention_category = list(
+    type = .null_str,
+    description = "Broad category: CBT, Exercise, Graded Exercise Therapy, Rehabilitation, Mindfulness, Pacing, Low-Dose Naltrexone, Nirmatrelvir/Ritonavir, CoQ10/NADH, Apheresis, Brain Stimulation, etc."
+  ),
   comparator = list(
     type = .null_str,
-    description = "Control/comparison group, e.g. usual care, waitlist, pacing"
+    description = "Control/comparison group, e.g. usual care, waitlist, pacing, sham, placebo"
+  ),
+  study_design = list(
+    type = .null_str,
+    description = "RCT, open-label trial, cohort, case-control, pre-post, cross-sectional"
+  ),
+  blinding = list(
+    type = .null_str,
+    description = "double-blind, single-blind, open-label, sham-controlled, or null if not stated"
+  ),
+  condition = list(
+    type = .null_str,
+    enum = list("long COVID", "ME/CFS", "both", "post-viral fatigue"),
+    description = "Which condition was studied"
   ),
   n_intervention = list(
     type = .null_int,
@@ -582,12 +640,17 @@ sanitize_extracted <- function(df) {
   ),
   outcome_measure = list(
     type = .null_str,
-    description = "Outcome instrument, e.g. CFQ, SF-36, Chalder Fatigue Scale"
+    description = "Outcome instrument, e.g. Chalder Fatigue Scale, SF-36 Physical Functioning, 6-Minute Walk Test, PHQ-9"
   ),
   outcome_domain = list(
     type = "string",
     enum = .outcome_domain_enum,
     description = "Outcome category. Pick the closest match from the allowed values."
+  ),
+  scale_direction = list(
+    type = .null_str,
+    enum = list("lower_is_better", "higher_is_better"),
+    description = "REQUIRED for every outcome. Does a LOWER score mean improvement (e.g. fatigue severity, pain VAS, depression scales, symptom counts) or does a HIGHER score mean improvement (e.g. SF-36, 6MWD, QoL, grip strength, walk distance, well-being VAS)?"
   ),
   mean_intervention = list(
     type = .null_num,
@@ -605,15 +668,27 @@ sanitize_extracted <- function(df) {
     type = .null_num,
     description = "Post-intervention SD in comparator group"
   ),
-  effect_size = list(type = .null_num),
-  ci_lower = list(type = .null_num, description = "Lower 95% CI bound"),
-  ci_upper = list(type = .null_num, description = "Upper 95% CI bound"),
+  effect_size = list(
+    type = .null_num,
+    description = "Pre-computed effect size if reported (SMD, Hedges g, Cohen d, OR, HR, RR, or raw mean difference). Place it here regardless of type — use effect_size_type to indicate the scale."
+  ),
+  effect_size_type = list(
+    type = .null_str,
+    enum = list("SMD", "hedges_g", "cohen_d", "odds_ratio", "hazard_ratio", "risk_ratio", "mean_difference", "other"),
+    description = "REQUIRED when effect_size is provided. Classify the effect size scale: SMD/hedges_g/cohen_d for standardised mean differences; odds_ratio/hazard_ratio/risk_ratio for ratio measures (OR, HR, RR, aOR, aHR — where 1.0 = no effect); mean_difference for unstandardised score differences."
+  ),
+  ci_lower = list(type = .null_num, description = "Lower bound of the confidence interval"),
+  ci_upper = list(type = .null_num, description = "Upper bound of the confidence interval"),
+  ci_level = list(
+    type = .null_num,
+    description = "Confidence level as a proportion (0.95 for 95% CI, 0.90 for 90% CI). Default to 0.95 if not explicitly stated."
+  ),
   p_value = list(type = .null_num),
   followup_weeks = list(type = .null_num),
   pem_assessed = list(type = "boolean"),
   diagnostic_criteria = list(
     type = .null_str,
-    description = "ME/CFS criteria, e.g. Fukuda, CCC, IOM, none"
+    description = "ME/CFS criteria, e.g. Fukuda, CCC, IOM, WHO Long COVID definition, none"
   ),
   adverse_events_reported = list(type = "boolean"),
   adverse_events_detail = list(type = .null_str)
@@ -630,6 +705,8 @@ sanitize_extracted <- function(df) {
         "comparator",
         "outcome_measure",
         "outcome_domain",
+        "scale_direction",
+        "effect_size_type",
         "pem_assessed",
         "adverse_events_reported"
       ),
@@ -646,6 +723,7 @@ sanitize_extracted <- function(df) {
         "comparator",
         "outcome_measure",
         "outcome_domain",
+        "effect_size_type",
         "pem_assessed",
         "adverse_events_reported"
       ),
@@ -1945,7 +2023,9 @@ extraction_to_df <- function(extracted_list, study_id, search_topic) {
   sanitize_extracted(df)
 }
 
-write_extracted_data <- function(new_data, domain) {
+write_extracted_data <- function(new_data, domain, replace_study = FALSE) {
+  if (is.null(new_data) || !is.data.frame(new_data) || nrow(new_data) == 0) return(invisible(NULL))
+
   files <- list(
     treatment_cbt_psych = here::here(
       "data/extracted/treatment_cbt_psych.parquet"
@@ -1964,18 +2044,50 @@ write_extracted_data <- function(new_data, domain) {
     return(invisible(NULL))
   }
 
+  if (!"extraction_source" %in% names(new_data)) {
+    new_data$extraction_source <- "consensus"
+  }
+
   dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
 
   if (file.exists(path)) {
     existing <- as.data.frame(arrow::read_parquet(path))
+    if (!"extraction_source" %in% names(existing)) {
+      existing$extraction_source <- NA_character_
+    }
     for (col in setdiff(names(new_data), names(existing))) {
       existing[[col]] <- NA
     }
     for (col in setdiff(names(existing), names(new_data))) {
       new_data[[col]] <- NA
     }
+    new_study_ids <- unique(new_data$study_id)
+    if (replace_study) {
+      existing <- existing[!existing$study_id %in% new_study_ids, , drop = FALSE]
+    } else {
+      existing <- existing[
+        !existing$study_id %in% new_study_ids |
+        (!is.na(existing$extraction_source) &
+         existing$extraction_source == "human_verified"),
+        ,
+        drop = FALSE
+      ]
+      new_data <- new_data[
+        !new_data$study_id %in%
+          existing$study_id[!is.na(existing$extraction_source) &
+                            existing$extraction_source == "human_verified"],
+        ,
+        drop = FALSE
+      ]
+    }
     new_data <- rbind(existing, new_data[, names(existing), drop = FALSE])
   }
+
+  dedup_cols <- intersect(
+    c("study_id", "intervention", "outcome_measure", "mean_intervention", "effect_size"),
+    names(new_data)
+  )
+  new_data <- new_data[!duplicated(new_data[, dedup_cols]), , drop = FALSE]
 
   arrow::write_parquet(new_data, path)
 }
@@ -2094,17 +2206,19 @@ log_extraction <- function(
   n_parsed,
   n_agreeing,
   had_supplement,
+  fetch_status = NA_character_,
   log_file = here::here("data/extraction-log.csv")
 ) {
   entry <- data.frame(
-    date = Sys.Date(),
+    date = as.character(Sys.Date()),
     study_id = study_id,
     topic = topic,
     consensus = consensus,
-    n_attempts = n_attempts,
-    n_parsed = n_parsed,
-    n_agreeing = n_agreeing,
+    n_attempts = as.integer(n_attempts),
+    n_parsed = as.integer(n_parsed),
+    n_agreeing = as.integer(n_agreeing),
     had_supplement = had_supplement,
+    fetch_status = fetch_status,
     stringsAsFactors = FALSE
   )
 
@@ -2129,13 +2243,20 @@ log_extraction <- function(
 
   fulltext <- NULL
   had_fulltext <- FALSE
+  fetch_status <- "no_id"
   has_id <- (!is.na(studies$pmid[i]) && studies$pmid[i] != "") ||
     (!is.na(studies$doi[i]) && studies$doi[i] != "")
   if (try_supplements && has_id) {
     cli::cli_alert_info("Fetching full text, tables, and supplements...")
-    fulltext <- fetch_study_content(
-      pmid = studies$pmid[i] %||% NA,
-      doi = studies$doi[i] %||% NA
+    fulltext <- tryCatch(
+      fetch_study_content(
+        pmid = studies$pmid[i] %||% NA,
+        doi = studies$doi[i] %||% NA
+      ),
+      error = function(e) {
+        cli::cli_alert_warning("Fulltext fetch failed: {conditionMessage(e)}")
+        NULL
+      }
     )
     had_fulltext <- !is.null(fulltext)
     if (had_fulltext) {
@@ -2145,7 +2266,10 @@ log_extraction <- function(
         if (!is.null(fulltext$tables)) "tables",
         if (!is.null(fulltext$supplements)) "supplements"
       )
+      fetch_status <- paste(parts, collapse = "+")
       cli::cli_alert_success("Found: {paste(parts, collapse = ', ')}")
+    } else {
+      fetch_status <- "fetch_failed"
     }
   }
 
@@ -2189,7 +2313,8 @@ log_extraction <- function(
     n_attempts = result$n_attempts,
     n_parsed = result$n_parsed,
     n_agreeing = result$n_agreeing,
-    had_supplement = had_fulltext
+    had_supplement = had_fulltext,
+    fetch_status = fetch_status
   )
 
   df <- NULL

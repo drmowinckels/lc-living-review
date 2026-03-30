@@ -1,5 +1,6 @@
 ---
 title: "Outcomes & Recovery"
+subtitle: "Natural history of Long COVID and ME/CFS without specific interventions"
 aliases:
   - /reviews/outcomes/
   - /reviews/recovery/
@@ -8,21 +9,23 @@ aliases:
 ```{r}
 #| label: setup
 #| include: false
+library(targets)
+tar_config_set(store = here::here("_targets"))
 source(here::here("R/utils.R"))
 source(here::here("R/meta-analysis.R"))
 source(here::here("R/plots.R"))
 
-studies <- read_study_database()
-outcomes <- read_extracted_data("outcomes")
+studies <- targets::tar_read(studies)
+outcomes <- targets::tar_read(outcomes)
 has_data <- nrow(outcomes) > 0
 ```
 
-## Overview
-
+::: {.lead}
 Outcomes data tracks what happens to patients over time in the absence of specific interventions.
 This is distinct from treatment trials -- here we are looking at the natural history of Long COVID and ME/CFS.
 Understanding natural trajectories matters because without a clear baseline of what happens without treatment, it is impossible to judge whether an intervention actually helps.
 This review synthesises longitudinal data on fatigue, physical function, quality of life, PEM, and recovery rates, stratified by PEM status where available.
+:::
 
 ```{r}
 #| label: included-studies
@@ -36,6 +39,69 @@ if (nrow(topic_studies) > 0) {
   cli::cat_line(glue::glue("**{nrow(topic_studies)} relevant studies** identified."))
 }
 ```
+
+::: {.at-a-glance}
+## At a Glance {#sec-lay}
+
+This section tracks what happens to patients over time without specific treatment.
+Understanding the natural course of illness is essential — without this baseline, we cannot tell whether any treatment actually helps.
+
+```{r}
+#| label: study-count-badge
+#| results: asis
+if (has_data) {
+  n_studies <- dplyr::n_distinct(outcomes$study_id)
+  cat(sprintf(
+    '<div class="study-count"><span class="count-number">%d</span><span class="count-label">outcome datapoints from %d studies</span></div>',
+    nrow(outcomes), n_studies
+  ))
+}
+```
+
+```{r}
+#| label: lay-outcome-domains
+#| eval: !expr has_data
+#| fig-height: 5
+#| fig-alt: "Horizontal bar chart showing how many study findings exist for each symptom area like fatigue, physical function, and quality of life."
+#| fig-cap: "What symptoms do researchers track? Each bar shows how many study findings report on that symptom area. Fatigue and physical function are the most studied, but many other important areas have less evidence."
+if (has_data && "outcome_domain" %in% names(outcomes)) {
+  domain_counts <- outcomes |>
+    dplyr::filter(!is.na(outcome_domain)) |>
+    dplyr::count(outcome_domain, sort = TRUE) |>
+    dplyr::mutate(outcome_domain = factor(outcome_domain, levels = rev(outcome_domain)))
+  if (nrow(domain_counts) > 0) {
+    ggplot(domain_counts, aes(x = n, y = outcome_domain)) +
+      geom_col(fill = cols_review["clinical"], width = 0.7) +
+      geom_text(aes(label = n), hjust = -0.2, size = 3.5) +
+      scale_x_continuous(expand = expansion(mult = c(0, 0.15))) +
+      labs(x = "Number of study findings", y = NULL,
+           title = "What do researchers measure in outcome studies?",
+           subtitle = "Number of findings by symptom area") +
+      theme_lay
+  }
+}
+```
+
+```{r}
+#| label: lay-pem-in-outcomes
+#| eval: !expr has_data
+#| fig-height: 5
+#| fig-alt: "Waffle chart showing what percentage of outcome studies report PEM prevalence in their cohorts."
+#| fig-cap: "Do outcome studies check for PEM? Each square represents 1% of study findings. Knowing how many patients have PEM matters because PEM-positive patients recover at very different rates."
+if (has_data && "pem_prevalence" %in% names(outcomes)) {
+  n_pem_reported <- sum(!is.na(outcomes$pem_prevalence) & outcomes$pem_prevalence > 0)
+  n_total <- nrow(outcomes)
+  if (n_total > 0) {
+    lay_waffle(n_pem_reported, n_total,
+               yes_label = "Reported PEM data",
+               no_label = "Did not report PEM",
+               title = "How many outcome studies report PEM prevalence?")
+  }
+}
+```
+:::
+
+<hr class="section-divider">
 
 ## Outcome Domains {#sec-domains}
 
@@ -56,6 +122,8 @@ if (has_data && "outcome_domain" %in% names(outcomes)) {
   }
 }
 ```
+
+::: {.panel-tabset}
 
 ## Recovery Rates {#sec-recovery}
 
@@ -119,7 +187,7 @@ When studies cluster in a narrow band, the evidence is more consistent; when the
 prevalence_plot(rec_plot_df, title = "Recovery Rates")
 ```
 
-## Recovery Definitions {#sec-definitions}
+### Recovery Definitions {#sec-definitions}
 
 How a study defines "recovery" profoundly shapes its reported recovery rate.
 A study that counts "return to work" as recovery will report higher rates than one requiring full symptom resolution.
@@ -181,6 +249,12 @@ ggplot(traj_df, aes(x = reorder(outcome_domain, change, FUN = median), y = chang
   theme_review
 ```
 
+:::
+
+::: {.key-finding}
+Without clear natural history baselines, it is impossible to judge whether a treatment effect is real or simply reflects the trajectory patients would have followed anyway. Outcome studies that do not stratify by PEM status are particularly problematic, as they average together two populations with very different prognoses.
+:::
+
 ## PEM Prevalence {#sec-pem}
 
 Post-exertional malaise (PEM) is the symptom most likely to distinguish Long COVID and ME/CFS from ordinary post-viral fatigue.
@@ -220,7 +294,7 @@ if (has_data && "condition" %in% names(outcomes)) {
 }
 ```
 
-::: {.callout-note}
+::: {.callout-note collapse="true"}
 ## Living Review
 
 This page is part of a living systematic review and is updated as new studies are identified, screened, and extracted.

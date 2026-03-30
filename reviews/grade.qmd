@@ -1,35 +1,86 @@
 ---
 title: "GRADE Evidence Profiles"
+subtitle: "Systematic certainty ratings for the evidence behind each finding"
 aliases:
   - /reviews/grade/
 ---
 
-## What is GRADE?
+```{r}
+#| label: setup
+#| include: false
+library(targets)
+tar_config_set(store = here::here("_targets"))
+source(here::here("R/utils.R"))
+source(here::here("R/plots.R"))
+grade <- tar_read(grade)
+```
 
+::: {.lead}
 GRADE (Grading of Recommendations, Assessment, Development and Evaluation) is a systematic framework for rating the certainty of evidence.
 It answers a specific question: how confident should we be that the estimated effect is close to the true effect?
 Certainty is not the same as importance -- a finding can be critically important even if the evidence is rated "very low."
 
 Each outcome starts at "high" certainty and can be downgraded for five reasons: risk of bias in the studies, inconsistency across results, indirectness (the studies do not quite match the question), imprecision (wide confidence intervals), and publication bias.
 It can also be upgraded if there is a large effect, a dose-response gradient, or if plausible confounders would have reduced the observed effect.
+:::
 
 ## How to Read the Table
 
 The table below groups outcomes by research domain.
 The **Certainty** column is colour-coded:
 
-- **High** (green): further research is very unlikely to change the estimate.
-- **Moderate** (amber): further research is likely to have an important impact and may change the estimate.
-- **Low** (orange): further research is very likely to change the estimate.
-- **Very low** (red): the estimate is very uncertain.
+::: {.panel-tabset}
+
+### High
+
+Further research is very unlikely to change the estimate. This is the strongest level of confidence -- the evidence base is large, consistent, and directly applicable.
+
+### Moderate
+
+Further research is likely to have an important impact and may change the estimate. There are some concerns about the evidence, but the direction of the effect is probably reliable.
+
+### Low
+
+Further research is very likely to change the estimate. The evidence has serious limitations -- conclusions should be drawn cautiously.
+
+### Very Low
+
+The estimate is very uncertain. The evidence is insufficient for confident conclusions, but the finding may still point in the right direction. More and better studies are needed.
+
+:::
 
 For clinical decision-making, "very low" certainty does not mean the finding is wrong -- it means we need more and better studies before acting on it with confidence.
 
+::: {.at-a-glance}
+## At a Glance {#sec-lay}
+
+Most of the evidence we have about ME/CFS and Long COVID is rated as very uncertain.
+This does not mean the findings are wrong — it means we need more and better studies to be confident in the results.
+The chart below shows how many of our assessed outcomes fall into each certainty level.
+
 ```{r}
-#| label: setup
-source(here::here("R/utils.R"))
-grade <- read_grade_data()
+#| label: study-count-badge
+#| results: asis
+if (nrow(grade) > 0) {
+  cat(sprintf(
+    '<div class="study-count"><span class="count-number">%d</span><span class="count-label">GRADE-assessed outcomes</span></div>',
+    nrow(grade)
+  ))
+}
 ```
+
+```{r}
+#| label: lay-grade-overview
+#| fig-height: 4
+#| fig-alt: "Stacked bar chart showing how many outcomes are rated as very uncertain, uncertain, moderate confidence, or confident."
+#| fig-cap: "How confident are we in what we know? Each segment represents outcomes at that certainty level. The dominance of red and orange shows that most evidence needs strengthening."
+if (nrow(grade) > 0) {
+  lay_grade_bar(grade)
+}
+```
+:::
+
+<hr class="section-divider">
 
 ```{r}
 #| label: grade-table
@@ -89,7 +140,7 @@ if (nrow(grade) == 0) {
 }
 ```
 
-::: {.callout-note}
+::: {.callout-note collapse="true"}
 ## Living Review
 
 This page is part of a living systematic review.

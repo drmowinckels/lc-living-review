@@ -68,6 +68,15 @@ search_queries <- list(
     '(', .condition_terms,
     'AND ("systematic review" OR "meta-analysis" OR "scoping review"',
     'OR "umbrella review" OR "rapid review" OR "Cochrane"))'
+  ),
+
+  protocols = paste(
+    '(', .condition_terms,
+    'AND ("study protocol" OR "trial protocol" OR "protocol for"',
+    'OR "trial registration" OR "registered trial"',
+    'OR "PROSPERO" OR "ClinicalTrials.gov" OR "ISRCTN"',
+    'OR "randomised controlled trial protocol"',
+    'OR "pilot protocol" OR "feasibility protocol"))'
   )
 )
 
@@ -134,7 +143,13 @@ run_search <- function(query,
     output = "parsed"
   )
 
-  .parse_epmc_results(results)
+  parsed <- .parse_epmc_results(results)
+  if (nrow(parsed) >= max_results) {
+    cli::cli_alert_warning(
+      "Search returned {max_results} results (the limit) — some studies may be missing. Consider increasing max_results."
+    )
+  }
+  parsed
 }
 
 fetch_abstracts <- function(pmids, batch_size = 50) {
