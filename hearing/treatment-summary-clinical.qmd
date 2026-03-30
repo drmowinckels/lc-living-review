@@ -1,0 +1,184 @@
+---
+title: Treatment Evidence for ME/CFS and Long COVID –- Clinical Summary
+subtitle: Living Systematic Review — March 2026
+author: Athanasia Monika Mowinckel
+format: typst
+---
+
+
+
+### Evidence Base
+
+- **36,577 studies screened** (automated + human verification pipeline)
+- **340 treatment studies** with extracted quantitative data
+  - 167 biomedical (316 effect sizes)
+  - 173 psychological/behavioural (416 effect sizes)
+- **177 GRADE assessments** completed
+- **Quality ratings**: Cochrane ROB2 (RCTs), ROBINS-I (observational)
+
+---
+
+### Biomedical Interventions
+
+#### Interventions with Most Evidence (by number of reported effect sizes)
+
+| Intervention | Effect sizes | Notes |
+|---|---|---|
+| Low-Dose Naltrexone | 28 | Primarily observational; targets neuroinflammation |
+| Nirmatrelvir/Ritonavir | 21 | Mix of RCTs and observational; early treatment vs established LC |
+| CoQ10/NADH | 14 | Mitochondrial energy support |
+| COVID-19 Vaccination | 11 | Post-infection vaccination effect on LC symptoms |
+| Apheresis | 10 | Blood filtering; small pilot studies |
+| Creatine | 8 | Cellular energy supplementation |
+| Nicotinamide Riboside | 7 | NAD+ precursor |
+| Hypoxia Therapy | 7 | Intermittent hypoxic-hyperoxic training |
+| HRG80 Red Ginseng | 7 | Adaptogen |
+| Brain Stimulation | 5 | TMS, tDCS |
+| Fluvoxamine | 5 | Sigma-1 receptor agonist; anti-inflammatory properties |
+| SSRIs | 5 | Various agents |
+
+**Additional agents investigated** (1-4 effect sizes each): metformin, methylphenidate, rapamycin, minocycline, probiotics, rintatolimod, rituximab, IVIg, hydrocortisone, stellate ganglion block, ketamine, colchicine, pirfenidone, SGLT2 inhibitors, among ~60 others.
+
+#### Biomedical Outcomes by Domain
+
+| Domain | Effect sizes | GRADE certainty |
+|---|---|---|
+| Fatigue | 75 | Very low |
+| Physical function | 45 | Very low |
+| Symptoms (general) | 30 | Very low |
+| Prevalence/risk reduction | 25 | Very low |
+| Cognition | 19 | Very low |
+| Quality of life | 19 | Very low |
+| Pain | 13 | Very low |
+| Respiratory | 13 | Very low |
+| Sleep | 13 | Very low |
+| Mortality | 12 | Very low |
+| Depression | 11 | Very low |
+| Biomarker | 10 | — |
+| Anxiety | 6 | — |
+| Cardiovascular | 6 | — |
+| PEM | 5 | Very low |
+| Autonomic | 2 | Very low |
+
+**All biomedical treatment evidence is GRADE "very low" certainty**, reflecting predominantly small sample sizes, heterogeneous interventions, high risk of bias, and imprecision.
+
+Notable exception: **Metformin** has moderate-certainty evidence from the RECOVER-COVID trial for LC risk reduction.
+
+---
+
+### Psychological/Behavioural Interventions
+
+#### Interventions with Most Evidence
+
+| Intervention | Effect sizes |
+|---|---|
+| CBT | 50 |
+| Exercise (general) | 46 |
+| Pulmonary Rehabilitation | 37 |
+| Rehabilitation (multidisciplinary) | 31 |
+| Graded Exercise Therapy | 26 |
+| Qigong/Tai Chi | 22 |
+| Mindfulness | 18 |
+| Yoga | 13 |
+| Digital cognitive training | 8 |
+| Self-management support | 7 |
+| Pacing | 7 |
+
+#### Psychological/Behavioural Outcomes by Domain
+
+| Domain | Effect sizes | GRADE certainty |
+|---|---|---|
+| Physical function | 95 | Very low |
+| Fatigue | 78 | Low |
+| Quality of life | 41 | Low |
+| Anxiety | 37 | **Moderate** |
+| Depression | 34 | **Moderate** |
+| Cognition | 23 | Very low |
+| Self-efficacy | 18 | — |
+| Symptoms (general) | 15 | Very low |
+| Respiratory | 13 | Very low |
+| Sleep | 13 | Very low |
+| Work/social | 12 | — |
+| Pain | 5 | Very low |
+| PEM | 5 | Very low |
+
+**Key finding**: CBT evidence achieves **moderate certainty for depression and anxiety** outcomes only. All physical outcome measures remain low or very low certainty.
+
+---
+
+### Paradigm Comparison
+
+| | Psychological/Behavioural | Biomedical |
+|---|---|---|
+| Studies | 173 | 167 |
+| Effect sizes | 416 | 316 |
+| Highest GRADE | Moderate (depression, anxiety) | Moderate (metformin, select SRs) |
+| Dominant designs | RCTs (larger, established tradition) | Mixed; many pilot/observational |
+| Outcome measures | Self-report questionnaires | Mix: labs, clinical, self-report |
+| PEM measured | 5/416 (1.2%) | 5/316 (1.6%) |
+
+**Critical methodological divergence**: The two paradigms measure different constructs using different instruments in potentially different populations. Apparent differences in effectiveness may partly reflect measurement culture rather than true treatment superiority.
+
+**Outcome measure heterogeneity**: Fatigue alone is measured by Chalder Fatigue Scale, MFI-20, VAS, FSS, and numerous others across studies, complicating pooling.
+
+---
+
+### PEM as a Stratifying Variable
+
+Post-exertional malaise is the cardinal feature of ME/CFS (required by all modern diagnostic criteria) and reported in a substantial proportion of Long COVID patients. Our review identifies PEM as a critical moderator:
+
+- **PEM-positive cohorts show lower recovery rates** than PEM-negative cohorts
+- **Activity-increasing interventions (GET, exercise)** carry potential for harm in PEM-positive patients that goes undetected when PEM is not measured
+- **Only ~1.4% of all treatment effect sizes** come from studies that assessed PEM
+- Trials not assessing PEM cannot distinguish therapeutic benefit from patient deterioration masked by subjective questionnaire response
+
+**Clinical implication**: PEM status should be assessed before prescribing activity-based interventions. The absence of PEM measurement in a trial does not mean absence of harm.
+
+---
+
+### GRADE Evidence Summary — Treatment Domains
+
+| Treatment category | Outcome | Certainty | Interpretation |
+|---|---|---|---|
+| CBT | Depression | Moderate | Likely reduces depression symptoms |
+| CBT | Anxiety | Moderate | Likely reduces anxiety symptoms |
+| CBT | Fatigue | Low | May reduce self-reported fatigue |
+| CBT | Physical function | Very low | Very uncertain effect |
+| CBT | Quality of life | Low | May improve QoL |
+| CBT | Cognition | Very low | Very uncertain effect |
+| CBT | PEM | Very low | Very uncertain; minimal data |
+| Biomedical (all pooled) | Fatigue | Very low | Very uncertain effect |
+| Biomedical (all pooled) | Physical function | Very low | Very uncertain effect |
+| Biomedical (all pooled) | Quality of life | Very low | Very uncertain effect |
+| Biomedical (all pooled) | Cognition | Very low | Very uncertain effect |
+| Metformin | LC risk reduction | Moderate | Likely reduces Long COVID incidence |
+| Pulmonary rehab | Physical capacity (6MWD) | Moderate | Likely improves walk distance |
+| Pulmonary rehab | Dyspnoea | Low | May reduce dyspnoea |
+| LDN | Pain (fibromyalgia) | Low | May reduce pain |
+| LDN | Fatigue (Long COVID) | Very low | Very uncertain effect |
+| Nirmatrelvir/ritonavir | Post-acute mortality | Low | May reduce mortality |
+
+---
+
+### Evidence Gaps
+
+1. **PEM measurement** is almost universally absent from treatment trials (<2%)
+2. **Adverse event reporting** is inconsistent; absence of reporting ≠ absence of events
+3. **Pacing** — the most commonly used patient strategy — has only 7 effect sizes (biomedical) + 7 (behavioural)
+4. **Long-term follow-up** is rare; most trials report short-term outcomes
+5. **Diagnostic heterogeneity** — studies use different ME/CFS and Long COVID case definitions
+6. **Recovery definition variability** makes between-study comparison of prognosis unreliable
+7. **No head-to-head trials** comparing biomedical and psychological approaches directly
+
+### Clinical Implications
+
+1. **No single treatment has high-certainty evidence** for any outcome in ME/CFS or Long COVID
+2. **CBT has the strongest evidence base** but only for psychological outcomes (depression, anxiety); claims of physical function improvement rest on very low certainty evidence
+3. **Activity-based interventions require PEM screening** — exercise prescription without PEM assessment risks harm
+4. **Biomedical treatments are promising but premature** — LDN, antivirals, and metabolic agents need larger RCTs
+5. **Multidisciplinary management with pacing as foundation** remains the most defensible clinical approach pending stronger evidence
+6. **Publication bias assessment** (funnel plots, Egger's test, trim-and-fill) is conducted where k ≥ 5; results suggest potential positive-result publication bias in both paradigms
+
+---
+
+*Living systematic review. Random-effects meta-analysis (REML). Effect sizes: Hedges' g (continuous outcomes). Heterogeneity: I², τ², Q-statistic. Sensitivity: leave-one-out influence diagnostics. Data current as of March 2026.*

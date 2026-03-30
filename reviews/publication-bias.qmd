@@ -1,0 +1,272 @@
+---
+title: "Publication Bias: Protocol-to-Publication Pipeline"
+---
+
+```{r}
+#| label: setup
+#| include: false
+library(arrow)
+library(dplyr)
+library(ggplot2)
+library(knitr)
+source(here::here("R/registry-search.R"))
+source(here::here("R/plots.R"))
+
+studies <- read_parquet(here::here("data/studies.parquet"))
+registry_file <- here::here("data/extracted/registry_trials.parquet")
+```
+
+## Rationale
+
+Publication bias — the tendency for studies with positive or statistically significant results to be published preferentially — is a well-documented threat to systematic review validity. Registered protocols and trial registrations that never produce published results may indicate suppressed null or negative findings. By systematically tracking the protocol-to-publication pipeline, we can estimate the extent of this bias in Long COVID and ME/CFS research.
+
+This analysis uses two complementary approaches:
+
+1. **ClinicalTrials.gov registry search**: Direct query of registered interventional and observational studies
+2. **Protocol-publication matching**: Cross-referencing published protocols in our database against published results
+
+## ClinicalTrials.gov Registry
+
+```{r}
+#| label: fetch-registry
+#| cache: true
+if (file.exists(registry_file)) {
+  registry <- read_parquet(registry_file)
+  message(sprintf("Loaded %d registry entries from cache", nrow(registry)))
+} else {
+  registry <- search_ctgov()
+  registry <- classify_registry_status(registry)
+  registry <- filter_relevant_trials(registry)
+  registry <- match_registry_to_publications(registry, studies)
+  write_parquet(registry, registry_file)
+}
+
+n_excluded <- sum(!registry$relevant, na.rm = TRUE)
+registry_all <- registry
+registry <- registry[registry$relevant %in% TRUE, ]
+```
+
+### Registration Overview
+
+```{r}
+#| label: registry-overview
+cat(sprintf("**Total registered studies**: %d (after excluding %d irrelevant registrations: vaccine immunogenicity, acute prophylaxis, serology, and off-topic studies)\n\n", nrow(registry), n_excluded))
+
+status_summary <- registry |>
+  count(publication_status) |>
+  mutate(
+    label = case_when(
+      publication_status == "results_posted" ~ "Results posted or linked publication",
+      publication_status == "completed_no_results" ~ "Completed ≥2 years, no results",
+      publication_status == "recently_completed" ~ "Recently completed (<2 years)",
+      publication_status == "ongoing" ~ "Still ongoing",
+      publication_status == "terminated" ~ "Withdrawn or terminated",
+      TRUE ~ "Unknown"
+    )
+  ) |>
+  arrange(desc(n))
+
+kable(
+  status_summary |> select(Status = label, N = n),
+  caption = "Trial registration status breakdown"
+)
+```
+
+```{r}
+#| label: fig-registry-status
+#| fig-cap: "Status of registered Long COVID and ME/CFS trials"
+status_colours <- c(
+  "results_posted" = "#2ca02c",
+  "completed_no_results" = "#d62728",
+  "recently_completed" = "#ff7f0e",
+  "ongoing" = "#1f77b4",
+  "terminated" = "#7f7f7f",
+  "unknown" = "#bcbd22"
+)
+
+status_labels <- c(
+  "results_posted" = "Results posted",
+  "completed_no_results" = "Completed, no results (≥2y)",
+  "recently_completed" = "Recently completed (<2y)",
+  "ongoing" = "Ongoing",
+  "terminated" = "Withdrawn/Terminated",
+  "unknown" = "Unknown"
+)
+
+registry |>
+  count(publication_status) |>
+  mutate(label = status_labels[publication_status]) |>
+  ggplot(aes(x = reorder(label, n), y = n, fill = publication_status)) +
+  geom_col() +
+  coord_flip() +
+  scale_fill_manual(values = status_colours, guide = "none") +
+  labs(x = NULL, y = "Number of trials") +
+  theme_minimal(base_size = 13)
+```
+
+### Completed Trials Without Published Results
+
+These are trials that completed at least 2 years ago but have not posted results on ClinicalTrials.gov and could not be matched to a publication in our database. Under FDAAA 811, applicable clinical trials are required to post results within 12 months of primary completion.
+
+```{r}
+#| label: tbl-orphan-registry
+#| tbl-cap: "Registered trials completed ≥2 years ago without published results"
+orphans <- registry |>
+  filter(publication_status == "completed_no_results") |>
+  arrange(desc(years_since_completion)) |>
+  select(
+    `NCT ID` = nct_id,
+    Title = title,
+    Status = status,
+    `Completion` = completion_date,
+    `Years since` = years_since_completion,
+    Interventions = interventions,
+    Enrollment = enrollment
+  ) |>
+  mutate(`Years since` = round(`Years since`, 1))
+
+if (nrow(orphans) > 0) {
+  kable(orphans)
+} else {
+  cat("No orphan trials identified (all completed trials have posted results or publications).")
+}
+```
+
+### Intervention Types of Unpublished Trials
+
+```{r}
+#| label: fig-orphan-interventions
+#| fig-cap: "Intervention types among completed trials without published results"
+orphan_trials <- registry |>
+  filter(publication_status == "completed_no_results")
+
+if (nrow(orphan_trials) > 0) {
+  orphan_trials |>
+    tidyr::separate_rows(intervention_types, sep = "; ") |>
+    filter(!is.na(intervention_types), intervention_types != "") |>
+    count(intervention_types) |>
+    ggplot(aes(x = reorder(intervention_types, n), y = n)) +
+    geom_col(fill = "#d62728") +
+    coord_flip() +
+    labs(x = NULL, y = "Number of unpublished trials") +
+    theme_minimal(base_size = 13)
+}
+```
+
+## Protocol-Publication Matching
+
+Independently of the registry search, we cross-reference protocols published in our database (study protocols published in journals) against published results.
+
+```{r}
+#| label: protocol-matching
+protocols <- match_protocols_to_publications(studies)
+n_total <- nrow(protocols)
+n_published <- sum(protocols$has_published_results)
+n_orphan <- n_total - n_published
+
+cat(sprintf(
+  "Of **%d published protocols** in our database, **%d (%0.0f%%)** could be matched to a published results paper, and **%d (%0.0f%%)** remain without published results.\n",
+  n_total, n_published, 100 * n_published / n_total,
+  n_orphan, 100 * n_orphan / n_total
+))
+```
+
+```{r}
+#| label: fig-protocol-status
+#| fig-cap: "Protocol-to-publication pipeline"
+if (n_total > 0) {
+  data.frame(
+    status = c("Results published", "No results found"),
+    n = c(n_published, n_orphan)
+  ) |>
+    ggplot(aes(x = status, y = n, fill = status)) +
+    geom_col(width = 0.6) +
+    scale_fill_manual(values = c("Results published" = "#2ca02c", "No results found" = "#d62728"), guide = "none") +
+    labs(x = NULL, y = "Number of protocols") +
+    theme_minimal(base_size = 13)
+}
+```
+
+### Orphan Protocols by Domain
+
+```{r}
+#| label: tbl-orphan-protocols
+#| tbl-cap: "Published protocols without matching results, by search domain"
+orphan_protocols <- protocols |>
+  filter(!has_published_results) |>
+  group_by(search_topic) |>
+  summarise(
+    n_orphan = n(),
+    titles = paste(substr(title, 1, 80), collapse = "; "),
+    .groups = "drop"
+  )
+
+if (nrow(orphan_protocols) > 0) {
+  kable(
+    orphan_protocols |>
+      select(Domain = search_topic, `Orphan protocols` = n_orphan)
+  )
+}
+```
+
+### Detailed Orphan Protocol List
+
+```{r}
+#| label: tbl-orphan-detail
+#| tbl-cap: "Protocols without published results"
+orphan_detail <- protocols |>
+  filter(!has_published_results) |>
+  arrange(search_topic, year) |>
+  select(
+    Domain = search_topic,
+    Year = year,
+    Title = title,
+    Journal = journal,
+    DOI = doi
+  ) |>
+  mutate(Title = substr(Title, 1, 100))
+
+if (nrow(orphan_detail) > 0) {
+  kable(orphan_detail)
+} else {
+  cat("All protocols matched to published results.")
+}
+```
+
+## Combined Assessment
+
+```{r}
+#| label: combined-summary
+registry_orphans <- registry |>
+  filter(publication_status == "completed_no_results") |>
+  nrow()
+
+cat(sprintf(
+  paste(
+    "### Summary\n\n",
+    "- **ClinicalTrials.gov**: %d registered trials; %d completed ≥2 years without results\n",
+    "- **Published protocols**: %d protocols; %d without matching results paper\n",
+    "- **Combined unique orphan studies**: estimated %d–%d\n\n",
+    "These findings suggest that publication bias may affect %0.0f–%0.0f%% of completed research ",
+    "in the Long COVID and ME/CFS field, broadly consistent with estimates from other clinical domains ",
+    "(~30–50%% of trials go unpublished; @song2010dissemination).\n"
+  ),
+  nrow(registry), registry_orphans,
+  n_total, n_orphan,
+  max(registry_orphans, n_orphan), registry_orphans + n_orphan,
+  100 * registry_orphans / max(1, sum(registry$publication_status %in% c("results_posted", "completed_no_results"))),
+  100 * n_orphan / max(1, n_total)
+))
+```
+
+## Implications for This Review
+
+Publication bias has specific implications depending on the research domain:
+
+- **Treatment trials**: Unpublished null results inflate pooled effect sizes in meta-analyses. Our trim-and-fill analyses (see individual treatment reviews) provide one correction, but identifying specific missing trials strengthens the case.
+- **Prevalence studies**: Less directly affected, as prevalence estimates are not typically directional. However, studies finding lower-than-expected prevalence may be less likely to be published.
+- **Biomarker studies**: Negative biomarker findings are notoriously difficult to publish, potentially inflating the apparent discriminatory power of candidate biomarkers.
+
+::: {.callout-note}
+Protocol-to-publication matching is approximate — it relies on title similarity and NCT ID cross-referencing. Some protocols may have published results under substantially different titles or in journals not indexed in Europe PMC. Manual verification of orphan protocols is recommended before drawing firm conclusions.
+:::

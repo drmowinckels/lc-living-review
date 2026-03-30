@@ -1,0 +1,93 @@
+---
+title: Treating ME/CFS and Long COVID — What We Know So Far
+subtitle: A summary for patients, carers, and anyone who wants the picture without the jargon. Based on an ongoing review of over 36,000 research papers, updated March 2026.
+author: Athanasia Monika Mowinckel
+format: typst
+---
+
+## There is no cure yet — but that doesn't mean there's nothing to do
+
+Researchers have tested hundreds of different treatments for ME/CFS and Long COVID. We've looked at 340 of those studies in detail. The honest truth is that the scientific evidence for most treatments is still weak — not because the treatments definitely don't work, but because the studies done so far have been too small, too short, or too inconsistent to give us clear answers.
+
+When the formal research evidence is this uncertain, it makes sense to also listen to what patients themselves report helps. Thousands of people are living with these conditions and have learned, through trial and error, what makes their lives better or worse. That experience matters, and in many cases it's ahead of where the published research has caught up to.
+
+---
+
+## The single most important concept: pacing
+
+If you take one thing from this summary, let it be this.
+
+**Pacing** means staying within your energy limits and not pushing through when your body tells you to stop. For people with ME/CFS and many with Long COVID, doing too much causes a "crash" — a delayed worsening of symptoms called post-exertional malaise (PEM) that can last days or even weeks.
+
+Pacing is by far the most widely used strategy among patients. Paradoxically, it is one of the least researched — we found very few formal studies on it. But the patient community is clear: learning your limits and respecting them is the foundation that everything else builds on.
+
+---
+
+## What about exercise?
+
+This is where things get complicated, and where patient experience and some of the research disagree.
+
+Graded Exercise Therapy (GET) — gradually increasing activity levels — has been widely studied, mostly in CBT/exercise trials from the psychological research tradition. Some of these studies report improvements. But here's the problem: almost none of them measured whether patients were crashing afterwards. Out of over 400 outcomes reported in psychological treatment studies, fewer than 2% actually checked for PEM.
+
+If a study doesn't measure crashes, it can't tell you whether the exercise helped or harmed. Many patients report that pushing through with exercise made them significantly worse. Until studies properly measure this, exercise recommendations should come with a serious caution: **if you experience PEM, any activity programme needs to be carefully adapted and must not push through crashes.**
+
+Gentler movement approaches — like yoga, tai chi, or qigong — may be better tolerated, and patients often report finding these helpful when done within their limits.
+
+---
+
+## Medications showing promise
+
+Several medications are being studied. None has strong enough evidence to be called a proven treatment yet, but some are worth knowing about:
+
+**Low-Dose Naltrexone (LDN)** is probably the most talked-about option in patient communities, and it also has the most research behind it among biomedical treatments. Originally used for addiction at much higher doses, at very low doses it appears to reduce inflammation in the brain and nervous system. Patients report improvements in fatigue, pain, and brain fog. It's generally well tolerated. Many doctors are willing to prescribe it off-label, though large definitive trials are still ongoing.
+
+**Antivirals like Paxlovid** (nirmatrelvir/ritonavir) have been tested, mainly for Long COVID. There's some evidence that taking antivirals early during a COVID infection may reduce the chance of developing Long COVID. Whether they help once Long COVID is already established is less clear.
+
+**Metformin**, a common diabetes medication, showed promising results in a well-designed trial for preventing Long COVID. It stands out because the study quality was better than most.
+
+**Supplements** like CoQ10, creatine, and nicotinamide riboside (a form of vitamin B3) target the body's energy production systems. Some patients find them helpful for fatigue. The formal evidence is limited, but they're generally safe and many patients include them in their management approach.
+
+Other treatments being investigated include blood filtering (apheresis), brain stimulation, and various other repurposed drugs. Most of these are very early stage.
+
+---
+
+## Therapy and psychological support
+
+**Cognitive Behavioural Therapy (CBT)** is the most researched psychological treatment. The evidence is clearest for what you'd expect — it can help with depression and anxiety, which are common when living with a chronic illness. It does **not** cure the underlying physical disease, and it should never be offered as a substitute for medical investigation and treatment.
+
+That said, living with a condition that limits your life is genuinely hard, and having professional support for the emotional side of that is not a weakness — it's practical.
+
+**Mindfulness and acceptance-based approaches** are also reported as helpful by many patients, particularly for managing the psychological burden and improving sleep.
+
+---
+
+## What patients report helps most
+
+Given how uncertain the formal evidence is, it's worth paying attention to what people with these conditions consistently say works for them:
+
+- **Pacing and energy management** — learning your limits, planning activities, resting before you crash
+- **Sleep hygiene and support** — treating sleep as a priority, addressing sleep disorders
+- **Dietary changes** — many patients report benefit from anti-inflammatory diets, though formal evidence is limited
+- **Symptom-specific medications** — working with a knowledgeable doctor to address individual symptoms (pain, sleep problems, orthostatic intolerance)
+- **Stress reduction** — not because the illness is caused by stress, but because stress uses energy and can trigger crashes
+- **Community and peer support** — connecting with others who understand the condition
+
+---
+
+## The bottom line
+
+The research is catching up, but it's not there yet. Most of the evidence we have is rated as very uncertain by international standards. No treatment has strong proof of working for everyone.
+
+In the meantime, the most reasonable approach is:
+
+1. **Start with pacing** — protect your energy
+2. **Work with a doctor who takes the condition seriously** — explore options like LDN or symptom-specific treatments
+3. **Listen to your body** — if something makes you worse, stop, regardless of what a study says
+4. **Don't accept "just exercise more" or "it's psychological"** — the evidence doesn't support either claim as a complete answer
+5. **Stay informed but don't chase every new thing** — treatments that look promising in small studies often don't pan out
+
+The research will improve. Larger, better-designed trials are underway. But until those results arrive, patient experience is not a consolation prize — it's often the best guide we have.
+
+---
+
+*This summary comes from a living systematic review that continuously incorporates new research as it's published. The numbers behind these conclusions are available in the accompanying clinical summary.*

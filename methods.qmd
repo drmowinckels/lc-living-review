@@ -1,6 +1,11 @@
 ---
 title: "Methods"
+subtitle: "Search strategy, quality assessment, and statistical approach"
 ---
+
+::: {.lead}
+This living review follows PRISMA 2020 guidelines for systematic reviews, adapted for living reviews per the Living Systematic Review Network recommendations. Below is a complete account of the methods used.
+:::
 
 ## Search Strategy
 
@@ -14,9 +19,21 @@ We maintain separate search queries for each review domain. All queries are defi
 
 ```{r}
 #| label: show-queries
+#| results: asis
+#| echo: false
 source("R/search.R")
 for (nm in names(search_queries)) {
-  cat(sprintf("**%s**\n\n```\n%s\n```\n\n", nm, search_queries[[nm]]))
+  label <- nm
+  label <- gsub("_", " ", label)
+  label <- gsub("\\bcbt psych\\b", "CBT & Psychological", label)
+  label <- gsub("\\bpem prevalence\\b", "PEM Prevalence", label)
+  label <- tools::toTitleCase(label)
+  query <- search_queries[[nm]]
+  query <- gsub("\\b(AND|OR|NOT)\\b", "<strong>\\1</strong>", query)
+  cat(sprintf(
+    '::: {.search-query}\n\n#### %s\n\n<div class="query-text">%s</div>\n\n:::\n\n',
+    label, query
+  ))
 }
 ```
 
@@ -37,18 +54,22 @@ Searches run automatically via GitHub Actions every Monday. New results are appe
 
 We include both **clinical studies** and **patient-reported outcome studies**, analysed in separate categories:
 
-**Clinical studies:**
+::: {.panel-tabset}
+
+#### Clinical studies
 
 - Randomised controlled trials (RCTs)
 - Non-randomised controlled trials
 - Prospective cohort studies
 - Cross-sectional studies with defined sampling
 
-**Patient-reported studies:**
+#### Patient-reported studies
 
 - Patient surveys with structured outcomes
 - Registry-based studies
 - Qualitative studies with systematic methods (for narrative synthesis only)
+
+:::
 
 ### Outcomes
 
@@ -73,10 +94,29 @@ Domain-specific outcomes are defined per review topic:
 
 ### Risk of Bias
 
-- **RCTs**: Cochrane Risk of Bias 2 (RoB 2)
-- **Non-randomised studies**: ROBINS-I
-- **Prevalence studies**: Joanna Briggs Institute (JBI) checklist
-- **Patient surveys**: Adapted Newcastle-Ottawa Scale
+::: {.methods-tool-grid}
+
+::: {.methods-tool}
+**RCTs**
+[Cochrane Risk of Bias 2 (RoB 2)]{style="display:block;"}
+:::
+
+::: {.methods-tool}
+**Non-randomised studies**
+[ROBINS-I]{style="display:block;"}
+:::
+
+::: {.methods-tool}
+**Prevalence studies**
+[Joanna Briggs Institute (JBI) checklist]{style="display:block;"}
+:::
+
+::: {.methods-tool}
+**Patient surveys**
+[Adapted Newcastle-Ottawa Scale]{style="display:block;"}
+:::
+
+:::
 
 ### GRADE Assessment
 
@@ -97,15 +137,18 @@ GRADE ratings are applied per outcome within each comparison, considering:
 
 ## Data Extraction
 
-Extracted data are stored in CSV files under [`data/extracted/`](data/extracted/):
+Extracted data are stored in Apache Parquet format under [`data/extracted/`](data/extracted/):
 
-- `treatment_effects.csv` — effect sizes for treatment comparisons
-- `prevalence_estimates.csv` — prevalence point estimates
-- `pem_prevalence.csv` — PEM-specific prevalence data
-- `recovery_outcomes.csv` — recovery rates and trajectories
-- `quality_ratings.csv` — risk of bias and GRADE assessments
+| File | Contents |
+|------|----------|
+| `treatment_cbt_psych.parquet` | Effect sizes for CBT, exercise, rehabilitation, and other psychological/behavioural interventions |
+| `treatment_biomedical.parquet` | Effect sizes for pharmacological, supplement, and device-based interventions |
+| `biomarkers.parquet` | Biomarker findings (type, direction, diagnostic performance) |
+| `outcomes.parquet` | Natural history data (recovery rates, symptom trajectories) |
+| `quality_ratings.parquet` | Risk of bias assessments (ROB2, ROBINS-I, CASP) |
+| `grade.parquet` | GRADE evidence certainty ratings |
 
-Each file includes the `study_id` linking back to the master database in [`data/studies.csv`](data/studies.csv).
+Each file includes `study_id` linking back to the master database in [`data/studies.parquet`](data/studies.parquet).
 
 ## Statistical Methods
 
@@ -116,6 +159,20 @@ All meta-analyses use the `metafor` R package [@viechtbauer2010metafor].
 - **Treatment effects**: Random-effects models (REML estimator). Effect sizes standardised as Hedges' *g* for continuous outcomes or odds ratios for binary outcomes.
 - **Prevalence**: Random-effects logit-transformed proportions with Freeman-Tukey double arcsine back-transformation.
 - **Heterogeneity**: Assessed via $I^2$, $\tau^2$, and Cochran's Q. Prediction intervals reported alongside confidence intervals.
+
+### Effect Size Direction Convention
+
+::: {.key-finding}
+All effect sizes follow a consistent directional convention: **negative SMD = favours the intervention** (the treatment group improved relative to control).
+:::
+
+Most clinical scales are scored so that lower values indicate improvement (e.g. fatigue severity, pain intensity, depression scores). For these, the standard `escalc()` computation of treatment minus control naturally produces negative values when treatment helps.
+
+However, some scales are scored in the opposite direction, where higher values indicate better outcomes (e.g. SF-36 physical functioning, EQ-5D quality of life, 6-minute walk distance). For these, the sign of the SMD is flipped so that negative consistently means "favours treatment" across all outcomes. The full list of patterns triggering a sign flip is defined in [`R/meta-analysis.R`](R/meta-analysis.R).
+
+### Filtering of Non-Standardised Effect Sizes
+
+Some studies report effect sizes as raw mean differences (e.g. metres walked, raw questionnaire points) rather than standardised mean differences (Hedges' *g*). Pre-computed effect sizes with |SMD| > 3 are excluded from meta-analytic pooling, as genuine standardised effects virtually never exceed this threshold. This prevents raw-scale values from distorting pooled estimates. The excluded values remain in the extracted data files for reference but are not included in forest plots or pooled analyses.
 
 ### Subgroup Analyses
 
@@ -131,6 +188,16 @@ Pre-specified subgroup analyses:
 - Leave-one-out analysis
 - Influence diagnostics
 - Trim-and-fill for publication bias assessment
+
+### Publication Bias: Protocol-to-Publication Pipeline
+
+Beyond trim-and-fill, we assess publication bias by tracking the protocol-to-publication pipeline:
+
+1. **ClinicalTrials.gov registry search**: We query the ClinicalTrials.gov API for all registered interventional and observational studies matching our condition terms. Trials completed ≥2 years ago without posted results or a matched publication are flagged as potential evidence of non-reporting.
+2. **Protocol-publication matching**: Published study protocols in our database are cross-referenced against results papers using NCT ID matching and title similarity. Protocols without matching results are classified as orphan protocols.
+3. **Combined assessment**: The proportion of completed-but-unpublished studies informs our GRADE assessments for publication bias within each treatment domain.
+
+Registry search functions are defined in [`R/registry-search.R`](R/registry-search.R). Results are reported in the [Publication Bias](reviews/publication-bias.qmd) review.
 
 ## Reporting
 

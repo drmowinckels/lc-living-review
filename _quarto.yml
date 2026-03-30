@@ -36,6 +36,8 @@ website:
           - text: ---
           - text: GRADE Assessment
             href: reviews/grade.qmd
+          - text: Publication Bias
+            href: reviews/publication-bias.qmd
       - text: Study Database
         href: study-database.qmd
     right:
@@ -49,8 +51,12 @@ website:
 format:
   html:
     theme:
-      light: cosmo
-      dark: darkly
+      light:
+        - cosmo
+        - custom.scss
+      dark:
+        - darkly
+        - custom-dark.scss
     toc: true
     toc-depth: 3
     number-sections: true
@@ -59,12 +65,12 @@ format:
     fig-width: 10
     fig-height: 6
     fig-dpi: 300
+    fig-format: svg
 
 bibliography: references.bib
 csl: apa.csl
 date: last-modified
 
 execute:
-  freeze: auto
   warning: false
   message: false

@@ -1,5 +1,6 @@
 ---
 title: "Prevalence"
+subtitle: "How common are Long COVID and ME/CFS symptoms across populations?"
 ---
 
 ```{r}
@@ -14,13 +15,61 @@ prev_data <- read_extracted_data("prevalence")
 has_data <- nrow(prev_data) > 0
 ```
 
-## Overview
-
+::: {.lead}
 Prevalence estimates tell us how common each symptom is among people with Long COVID or ME/CFS.
 These numbers vary enormously across studies -- sometimes by a factor of five or more for the same symptom -- and the reasons matter.
 Studies that recruit from hospital follow-up clinics capture sicker patients than population-based surveys.
 Studies that use stricter diagnostic criteria tend to find higher symptom prevalence within their smaller, more severely affected cohorts.
 The pooled estimates below attempt to account for this heterogeneity, but they should be read as ranges rather than single definitive numbers.
+:::
+
+::: {.at-a-glance}
+## At a Glance {#sec-lay}
+
+The most commonly reported symptoms in Long COVID are fatigue, cognitive difficulties, and shortness of breath.
+The exact numbers vary widely between studies because of different populations and measurement methods.
+
+```{r}
+#| label: study-count-badge
+#| eval: !expr has_data
+#| results: asis
+if (has_data) {
+  cat(sprintf(
+    '<div class="study-count"><span class="count-number">%d</span><span class="count-label">prevalence estimates from %d studies</span></div>\n',
+    nrow(prev_data), length(unique(prev_data$study_id))
+  ))
+}
+```
+
+```{r}
+#| label: lay-symptom-bar
+#| eval: !expr has_data
+#| fig-height: 6
+#| fig-alt: "Horizontal bar chart showing how often each symptom is reported across Long COVID studies."
+#| fig-cap: "Which symptoms are most commonly studied? Each bar shows how many studies reported on that symptom. More bars = more evidence about that symptom."
+if (has_data && "symptom" %in% names(prev_data)) {
+  sym_counts <- prev_data |>
+    dplyr::filter(!is.na(symptom)) |>
+    dplyr::count(symptom, sort = TRUE) |>
+    dplyr::slice_head(n = 15) |>
+    dplyr::mutate(symptom = factor(symptom, levels = rev(symptom)))
+  if (nrow(sym_counts) > 0) {
+    ggplot(sym_counts, aes(x = n, y = symptom)) +
+      geom_col(fill = cols_review["clinical"], width = 0.7) +
+      geom_text(aes(label = n), hjust = -0.2, size = 3.5) +
+      scale_x_continuous(expand = expansion(mult = c(0, 0.15))) +
+      labs(x = "Number of study findings", y = NULL,
+           title = "Most commonly studied symptoms",
+           subtitle = "More studies means more evidence about that symptom") +
+      theme_lay
+  }
+}
+```
+:::
+
+<hr class="section-divider">
+
+::: {.panel-tabset}
 
 ## Long COVID Symptom Prevalence
 
@@ -69,6 +118,8 @@ if (nrow(mecfs) >= 2) {
 }
 ```
 
+:::
+
 ## By Timepoint
 
 Symptom prevalence can change over time -- some symptoms resolve, others emerge months after the initial infection.
@@ -84,15 +135,7 @@ if (has_data && any(!is.na(prev_data$timepoint_months))) {
 }
 ```
 
-## Lay Summary {#sec-lay}
-
-```{r}
-#| label: lay-prevalence
-#| eval: !expr has_data
-cat("*Accessible prevalence visualisations for non-specialist audiences.*\n")
-```
-
-::: {.callout-note}
+::: {.callout-note collapse="true"}
 ## Living Review
 
 This page is part of a living systematic review and is updated as new studies are identified, screened, and extracted.

@@ -455,10 +455,35 @@ display_table <- function(df, caption = NULL) {
       table.font.size = gt::px(14),
       heading.align = "left",
       column_labels.font.weight = "bold",
-      column_labels.border.bottom.color = "grey40",
-      table_body.hlines.color = "grey90",
+      table.background.color = "transparent",
+      column_labels.background.color = "transparent",
+      row_group.background.color = "transparent",
+      stub.background.color = "transparent",
+      summary_row.background.color = "transparent",
+      grand_summary_row.background.color = "transparent",
+      column_labels.border.top.style = "none",
+      column_labels.border.bottom.width = gt::px(2),
+      column_labels.border.bottom.color = "#a3d4de",
+      table_body.hlines.color = "#e7e5e4",
+      table_body.border.bottom.color = "#e7e5e4",
       table.border.top.style = "none",
       table.border.bottom.style = "none"
+    ) |>
+    gt::tab_style(
+      style = gt::cell_text(color = "#44403c", size = gt::px(14)),
+      locations = gt::cells_body()
+    ) |>
+    gt::tab_style(
+      style = list(
+        gt::cell_text(
+          color = "#124a56",
+          size = gt::px(12),
+          transform = "uppercase",
+          weight = "bold"
+        ),
+        gt::cell_borders(sides = "bottom", color = "#a3d4de", weight = gt::px(2))
+      ),
+      locations = gt::cells_column_labels()
     )
   if (!is.null(caption)) {
     tbl <- tbl |> gt::tab_header(title = caption)
