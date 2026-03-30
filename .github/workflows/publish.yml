@@ -17,6 +17,8 @@ concurrency:
 jobs:
   build-deploy:
     runs-on: ubuntu-latest
+    env:
+      RENV_PROFILE: default
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -32,31 +34,22 @@ jobs:
         with:
           use-public-rspm: true
 
-      - name: Install R dependencies
-        uses: r-lib/actions/setup-r-dependencies@v2
+      - name: Cache renv
+        uses: actions/cache@v4
         with:
-          packages: |
-            any::here
-            any::arrow
-            any::metafor
-            any::ggplot2
-            any::dplyr
-            any::purrr
-            any::glue
-            any::cli
-            any::gt
-            any::scales
-            any::jsonlite
-            any::europepmc
-            any::pdftools
-            any::DiagrammeR
-            any::httr2
-            any::xml2
-            any::readxl
-            any::DT
+          path: renv/library
+          key: renv-default-${{ runner.os }}-${{ hashFiles('renv.lock') }}
+          restore-keys: renv-default-${{ runner.os }}-
 
-      - name: Render Quarto Project
-        uses: quarto-dev/quarto-actions/render@v2
+      - name: Restore renv
+        run: |
+          install.packages("renv", repos = "https://cloud.r-project.org")
+          renv::restore(prompt = FALSE)
+        shell: Rscript {0}
+
+      - name: Build with targets
+        run: targets::tar_make()
+        shell: Rscript {0}
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
