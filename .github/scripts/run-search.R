@@ -55,10 +55,18 @@ main <- function() {
 
   if (has_api_key) {
     message(sprintf("Running LLM screening with: %s", llm_model_name()))
+    screening_cols <- c("llm_relevant", "llm_category", "llm_study_type",
+                        "llm_reporting_type", "llm_confidence", "llm_model")
+    for (col in screening_cols) {
+      if (!col %in% names(new_results)) new_results[[col]] <- NA
+    }
     for (topic in unique(new_results$search_topic)) {
-      topic_studies <- new_results[new_results$search_topic == topic, ]
+      topic_idx <- which(new_results$search_topic == topic)
+      topic_studies <- new_results[topic_idx, ]
       screened <- screen_batch(topic_studies, search_topic = topic)
-      new_results[new_results$search_topic == topic, names(screened)] <- screened
+      for (col in intersect(screening_cols, names(screened))) {
+        new_results[[col]][topic_idx] <- screened[[col]]
+      }
     }
   } else {
     message("No API key found — screening disabled. Set GEMINI_API_KEY, ANTHROPIC_API_KEY, MISTRAL_API_KEY, or GITHUB_TOKEN.")
