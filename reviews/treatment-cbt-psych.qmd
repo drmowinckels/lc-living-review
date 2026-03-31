@@ -134,6 +134,104 @@ subgroup_forest(
 )
 ```
 
+## Sensitivity: Excluding the PACE Trial {#sec-sensitivity}
+
+::: {.key-finding}
+The PACE trial (chalder2015) contributes the largest individual effect sizes in this review and has been [widely criticised](https://doi.org/10.1186/s12916-019-1296-y) for methodological issues including mid-trial protocol changes, subjective primary outcomes, and the absence of objective improvement criteria.
+The analysis below removes all PACE data to show how the pooled estimates change.
+:::
+
+```{r}
+#| label: sensitivity-no-pace
+#| eval: !expr has_forest
+#| results: asis
+no_pace <- forest_df[forest_df$study_id != "chalder2015", ]
+if (nrow(no_pace) >= 2) {
+  pace_rows <- forest_df[forest_df$study_id == "chalder2015", ]
+
+  cat(sprintf(
+    "Removing %d effect sizes from the PACE trial leaves %d entries from %d studies.\n\n",
+    nrow(pace_rows), nrow(no_pace), length(unique(no_pace$study_id))
+  ))
+
+  for (grp in c("CBT", "Graded Exercise Therapy")) {
+    sub_full <- forest_df[!is.na(forest_df$intervention_category) &
+                          forest_df$intervention_category == grp, ]
+    sub_no_pace <- no_pace[!is.na(no_pace$intervention_category) &
+                           no_pace$intervention_category == grp, ]
+    if (nrow(sub_full) >= 2) {
+      fit_full <- tryCatch(run_meta(sub_full), error = function(e) NULL)
+      fit_np <- if (nrow(sub_no_pace) >= 2) tryCatch(run_meta(sub_no_pace), error = function(e) NULL) else NULL
+
+      if (!is.null(fit_full)) {
+        cat(sprintf("**%s** — with PACE: SMD = %.2f [%.2f, %.2f], k = %d",
+            grp, coef(fit_full), fit_full$ci.lb, fit_full$ci.ub, fit_full$k))
+        if (!is.null(fit_np)) {
+          cat(sprintf(" | without PACE: SMD = %.2f [%.2f, %.2f], k = %d\n\n",
+              coef(fit_np), fit_np$ci.lb, fit_np$ci.ub, fit_np$k))
+        } else {
+          cat(" | without PACE: insufficient data\n\n")
+        }
+      }
+    }
+  }
+}
+```
+
+## Symptom Burden Evidence {#sec-symptom-burden}
+
+::: {.key-finding}
+Several studies report raw score changes on symptom burden measures (DSQ, Chalder Fatigue Scale, WSAS) rather than standardised effect sizes.
+These cannot be pooled with the SMDs above but are important for assessing whether interventions worsen symptoms — particularly post-exertional malaise.
+Positive values on symptom scales indicate **worsening**.
+:::
+
+```{r}
+#| label: symptom-burden-data
+#| include: false
+symptom_df <- NULL
+if (has_data && "effect_size_type" %in% names(effects)) {
+  symptom_df <- effects |>
+    dplyr::filter(
+      effect_size_type == "mean_diff",
+      !is.na(effect_size),
+      grepl("CBT|GET|graded exercise|exercise|rehabilitation",
+            intervention, ignore.case = TRUE)
+    ) |>
+    dplyr::mutate(
+      study_label = dplyr::if_else(
+        !is.na(outcome_measure),
+        paste0(study_id, ": ", outcome_measure),
+        study_id
+      ),
+      direction = dplyr::case_when(
+        grepl("SF-36|SF-12|6.Minute|walk|EQ-5D|FACIT|strength|sit.to.stand",
+              outcome_measure, ignore.case = TRUE) ~ "higher_better",
+        TRUE ~ "lower_better"
+      ),
+      valence = dplyr::case_when(
+        direction == "higher_better" & effect_size > 0 ~ "improved",
+        direction == "higher_better" & effect_size < 0 ~ "worsened",
+        direction == "lower_better" & effect_size < 0 ~ "improved",
+        direction == "lower_better" & effect_size > 0 ~ "worsened",
+        TRUE ~ "no change"
+      )
+    )
+}
+has_symptom <- !is.null(symptom_df) && nrow(symptom_df) > 0
+```
+
+```{r}
+#| label: symptom-burden-table
+#| eval: !expr has_symptom
+symptom_summary <- symptom_df |>
+  dplyr::select(study_label, intervention, outcome_measure, effect_size, valence) |>
+  dplyr::arrange(valence, study_label)
+names(symptom_summary) <- c("Study: Outcome", "Intervention", "Measure",
+                             "Raw difference", "Direction")
+display_table(symptom_summary)
+```
+
 ## Interventions & Outcomes {.tabset}
 
 ::: {.panel-tabset}

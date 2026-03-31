@@ -1,6 +1,8 @@
 _site/
 _freeze/
 _targets/
+_targets.yaml
+reviews/_targets.yaml
 data/fulltext/
 data/extracted/claude_*.json
 data/review-flags.csv
