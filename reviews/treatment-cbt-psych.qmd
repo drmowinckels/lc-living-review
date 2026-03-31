@@ -151,9 +151,23 @@ It contributes the largest individual effect sizes in this review and substantia
 - **Regulatory response**: [NICE withdrew its recommendation of GET](https://www.nice.org.uk/guidance/ng206) for ME/CFS in 2021, citing the low quality of the evidence base that PACE had anchored.
 :::
 
-## Sensitivity: Excluding the PACE Trial {#sec-sensitivity}
+## How Robust Is This Evidence? {#sec-robustness}
 
-The analysis below removes all PACE data to show how the pooled estimates change.
+::: {.at-a-glance}
+
+### Plain-language summary {#sec-robustness-lay}
+
+Several factors weaken the evidence for CBT and GET:
+
+- **Every outcome in the pooled analysis is self-reported** — no study used objective physical measures (step counts, actigraphy, oxygen consumption) as primary outcomes. Self-reported outcomes are vulnerable to expectation bias, especially in unblinded trials.
+- **Removing one controversial trial changes the picture substantially** — the PACE trial contributes the largest effect sizes. Without it, the evidence is weaker or inconclusive.
+- **There are signs of publication bias** — smaller studies with negative results may be missing from the literature, inflating the apparent benefit.
+- **Studies that measured symptom worsening found it** — exercise-based programmes increased symptom frequency and severity on the DePaul Symptom Questionnaire in some trials.
+- **Different comparators give different answers** — studies comparing against waitlist (no treatment) show larger effects than those comparing against active alternatives like pacing.
+
+:::
+
+### Sensitivity: Excluding the PACE Trial {#sec-sensitivity}
 
 ```{r}
 #| label: sensitivity-no-pace
@@ -192,12 +206,163 @@ if (nrow(no_pace) >= 2) {
 }
 ```
 
-## Symptom Burden Evidence {#sec-symptom-burden}
+### Self-Report vs Objective Outcomes {#sec-objectivity}
+
+::: {.key-finding}
+All outcomes in the pooled analysis are based on self-report questionnaires (Chalder Fatigue Scale, SF-36, CIS-Fatigue, etc.).
+No study contributing to the forest plot used an objective primary outcome measure.
+
+In unblinded trials — where participants know whether they received CBT, GET, or a control — self-report improvements may reflect changed expectations, social desirability, or effort justification rather than physiological change.
+The PACE trial's only objective measure (six-minute walk distance) showed no significant difference between groups.
+:::
+
+### Publication Bias {#sec-pub-bias}
+
+```{r}
+#| label: pub-bias-data
+#| include: false
+pub_bias_result <- NULL
+has_pub_bias <- FALSE
+overall_fit <- NULL
+if (has_forest) {
+  valid_rows <- forest_df[is.finite(forest_df$vi) & forest_df$vi > 0, ]
+  if (nrow(valid_rows) >= 10) {
+    overall_fit <- tryCatch(run_meta(valid_rows), error = function(e) NULL)
+    if (!is.null(overall_fit) && overall_fit$k >= 10) {
+      pub_bias_result <- tryCatch(publication_bias(overall_fit), error = function(e) NULL)
+      has_pub_bias <- !is.null(pub_bias_result)
+    }
+  }
+}
+```
+
+```{r}
+#| label: pub-bias-funnel
+#| eval: !expr has_pub_bias
+#| fig-height: 5
+#| fig-alt: "Funnel plot showing effect sizes against standard errors. Asymmetry suggests small studies with unfavourable results may be missing."
+#| fig-cap: "Funnel plot of all CBT/psychological effect sizes. The dashed line shows the pooled estimate. In an unbiased literature, studies should scatter symmetrically around this line. Asymmetry — particularly missing studies in the bottom-right (small studies showing no benefit) — suggests publication bias."
+funnel_gg(overall_fit, title = "Funnel plot: CBT & psychological interventions")
+```
+
+```{r}
+#| label: pub-bias-results
+#| eval: !expr has_pub_bias
+#| results: asis
+if (has_pub_bias) {
+  egger_sig <- !is.na(pub_bias_result$egger_p) && pub_bias_result$egger_p < 0.05
+  cat("**Egger's regression test for funnel plot asymmetry:**",
+      sprintf("p = %.3f", pub_bias_result$egger_p))
+  if (egger_sig) {
+    cat(" — statistically significant asymmetry detected.\n\n")
+  } else {
+    cat(" — no significant asymmetry.\n\n")
+  }
+
+  if (!is.null(pub_bias_result$trim_fill)) {
+    tf <- pub_bias_result$trim_fill
+    cat(sprintf(
+      "**Trim-and-fill analysis** estimates **%d missing studies**. ",
+      pub_bias_result$tf_k0
+    ))
+    cat(sprintf(
+      "Adjusting for these changes the pooled estimate from **%.2f** to **%.2f**.\n\n",
+      coef(overall_fit), pub_bias_result$tf_estimate
+    ))
+
+    if (abs(pub_bias_result$tf_estimate) < 0.1) {
+      cat("After adjustment, the pooled effect is near zero — suggesting the apparent benefit ",
+          "may be largely attributable to selective publication of positive findings.\n")
+    }
+  }
+}
+```
+
+::: {.callout-tip collapse="true"}
+## What is publication bias?
+Studies that find a treatment works are more likely to be published than studies that find no effect.
+This means the published literature can overestimate how well a treatment works — not because anyone is lying, but because null results often stay in file drawers.
+The funnel plot and trim-and-fill analysis above estimate how large this bias might be.
+:::
+
+### Comparator Effects {#sec-comparators}
+
+What a treatment is compared against matters enormously.
+A therapy that looks effective compared to "do nothing" (waitlist) may look ineffective compared to an active alternative like pacing or standard medical care.
+
+```{r}
+#| label: comparator-data
+#| include: false
+comparator_df <- NULL
+has_comparator <- FALSE
+if (has_data) {
+  forest_ids <- unique(forest_df$study_id)
+  comp_info <- effects[effects$study_id %in% forest_ids & !is.na(effects$comparator), ]
+  if (nrow(comp_info) > 0) {
+    comp_info$comparator_type <- dplyr::case_when(
+      grepl("wait|waitlist|waiting", comp_info$comparator, ignore.case = TRUE) ~ "Waitlist / no treatment",
+      grepl("usual care|standard|SMC|TAU|treatment as usual", comp_info$comparator, ignore.case = TRUE) ~ "Usual care",
+      grepl("active|APT|pacing|activity management|adaptive", comp_info$comparator, ignore.case = TRUE) ~ "Active comparator",
+      grepl("control|passive|sham", comp_info$comparator, ignore.case = TRUE) ~ "Passive control",
+      TRUE ~ "Other"
+    )
+    comparator_df <- comp_info |>
+      dplyr::count(comparator_type, sort = TRUE)
+    has_comparator <- nrow(comparator_df) > 0
+  }
+}
+```
+
+```{r}
+#| label: comparator-table
+#| eval: !expr has_comparator
+names(comparator_df) <- c("Comparator Type", "Outcomes")
+display_table(comparator_df)
+```
+
+```{r}
+#| label: comparator-stratified
+#| eval: !expr has_forest
+#| results: asis
+if (has_data) {
+  forest_ids <- unique(forest_df$study_id)
+  comp_info <- effects[effects$study_id %in% forest_ids & !is.na(effects$comparator), ]
+  comp_info$is_active <- grepl("APT|pacing|activity management|adaptive|active",
+                               comp_info$comparator, ignore.case = TRUE)
+
+  active_ids <- unique(comp_info$study_id[comp_info$is_active])
+  passive_ids <- setdiff(forest_ids, active_ids)
+
+  active_forest <- forest_df[forest_df$study_id %in% active_ids, ]
+  passive_forest <- forest_df[forest_df$study_id %in% passive_ids, ]
+
+  if (nrow(active_forest) >= 2 && nrow(passive_forest) >= 2) {
+    fit_active <- tryCatch(run_meta(active_forest), error = function(e) NULL)
+    fit_passive <- tryCatch(run_meta(passive_forest), error = function(e) NULL)
+    if (!is.null(fit_active) && !is.null(fit_passive)) {
+      cat(sprintf(
+        "**Against active comparators** (pacing, activity management): SMD = %.2f [%.2f, %.2f], k = %d\n\n",
+        coef(fit_active), fit_active$ci.lb, fit_active$ci.ub, fit_active$k
+      ))
+      cat(sprintf(
+        "**Against passive/no-treatment controls**: SMD = %.2f [%.2f, %.2f], k = %d\n\n",
+        coef(fit_passive), fit_passive$ci.lb, fit_passive$ci.ub, fit_passive$k
+      ))
+      if (abs(coef(fit_active)) < abs(coef(fit_passive))) {
+        cat("When compared against active alternatives rather than no treatment, the effect shrinks — ",
+            "suggesting that part of the apparent benefit comes from simply receiving any structured intervention.\n")
+      }
+    }
+  }
+}
+```
+
+### Symptom Burden: Do These Treatments Cause Harm? {#sec-symptom-burden}
 
 ::: {.key-finding}
 Several studies report raw score changes on symptom burden measures (DSQ, Chalder Fatigue Scale, WSAS) rather than standardised effect sizes.
 These cannot be pooled with the SMDs above but are important for assessing whether interventions worsen symptoms — particularly post-exertional malaise.
-Positive values on symptom scales indicate **worsening**.
+Higher values on symptom burden scales indicate **worsening**.
 :::
 
 ```{r}
@@ -219,7 +384,7 @@ if (has_data && "effect_size_type" %in% names(effects)) {
         study_id
       ),
       direction = dplyr::case_when(
-        grepl("SF-36|SF-12|6.Minute|walk|EQ-5D|FACIT|strength|sit.to.stand",
+        grepl("SF-36|SF-12|6.Minute|walk|EQ-5D|FACIT|strength|sit.to.stand|ISWT|ESWT",
               outcome_measure, ignore.case = TRUE) ~ "higher_better",
         TRUE ~ "lower_better"
       ),
@@ -233,6 +398,28 @@ if (has_data && "effect_size_type" %in% names(effects)) {
     )
 }
 has_symptom <- !is.null(symptom_df) && nrow(symptom_df) > 0
+```
+
+```{r}
+#| label: symptom-burden-summary
+#| eval: !expr has_symptom
+#| results: asis
+if (has_symptom) {
+  n_worse <- sum(symptom_df$valence == "worsened")
+  n_better <- sum(symptom_df$valence == "improved")
+  cat(sprintf(
+    "Across %d raw outcome measures from CBT/exercise studies: **%d showed improvement** and **%d showed worsening**.\n\n",
+    nrow(symptom_df), n_better, n_worse
+  ))
+  worsened <- symptom_df[symptom_df$valence == "worsened", ]
+  if (nrow(worsened) > 0) {
+    cat("**Outcomes showing worsening:**\n\n")
+    for (i in seq_len(nrow(worsened))) {
+      cat(sprintf("- %s (%s): %+.1f points\n",
+          worsened$study_label[i], worsened$intervention[i], worsened$effect_size[i]))
+    }
+  }
+}
 ```
 
 ```{r}

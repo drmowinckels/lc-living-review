@@ -308,19 +308,18 @@ funnel_gg <- function(fit, title = "Funnel plot") {
   se <- sqrt(fit$vi)
   summary_est <- coef(fit)
 
-  se_range <- range(se)
-  ci_bound <- data.frame(
-    se = seq(0, max(se) * 1.05, length.out = 100)
+  se_max <- max(se, na.rm = TRUE) * 1.05
+  ci_poly <- data.frame(
+    x = c(summary_est, summary_est - qnorm(0.975) * se_max,
+          summary_est + qnorm(0.975) * se_max),
+    y = c(0, se_max, se_max)
   )
-  ci_bound$lower <- summary_est - qnorm(0.975) * ci_bound$se
-  ci_bound$upper <- summary_est + qnorm(0.975) * ci_bound$se
 
   df <- data.frame(yi = yi, se = se)
 
   ggplot(df, aes(x = yi, y = se)) +
-    geom_ribbon(data = ci_bound, aes(x = NULL, ymin = 0, ymax = se,
-                                      xmin = lower, xmax = upper),
-                fill = col_grid, colour = NA) +
+    geom_polygon(data = ci_poly, aes(x = x, y = y),
+                 fill = col_grid, colour = NA, inherit.aes = FALSE) +
     geom_vline(xintercept = summary_est, colour = col_muted,
                linewidth = 0.4, linetype = "dashed") +
     geom_point(size = 2, colour = cols_review["clinical"], alpha = 0.7) +
