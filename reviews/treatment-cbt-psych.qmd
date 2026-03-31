@@ -134,12 +134,26 @@ subgroup_forest(
 )
 ```
 
+## The PACE Trial Controversy {#sec-pace}
+
+::: {.callout-warning}
+## Why PACE matters for this review
+
+The PACE trial (White et al., 2011; chalder2015 in our database) is the largest RCT of CBT and GET for ME/CFS (n = 641).
+It contributes the largest individual effect sizes in this review and substantially influences the pooled estimates for both CBT and GET.
+
+**The trial has been subject to extensive methodological criticism:**
+
+- **Mid-trial outcome threshold changes**: the protocol-defined recovery thresholds for the primary outcome (Chalder Fatigue Scale) and key secondary outcome (SF-36 physical function) were [relaxed during the trial](https://doi.org/10.1186/s12916-019-1296-y), allowing participants to be classified as "recovered" while scoring within the entry criteria range.
+- **No objective outcome measures**: primary outcomes were entirely self-reported; the only objective measure (actigraphy/6-minute walk test) showed no significant difference between groups.
+- **Lack of blinding**: participants and therapists knew which treatment was received, creating expectation bias for subjective outcomes.
+- **Reanalysis with original thresholds**: when independent researchers [reanalysed PACE data](https://doi.org/10.1186/s12916-018-1115-z) using the originally published recovery criteria, recovery rates dropped from 22% to 7% for CBT and from 22% to 4% for GET — not significantly different from the control group.
+- **Regulatory response**: [NICE withdrew its recommendation of GET](https://www.nice.org.uk/guidance/ng206) for ME/CFS in 2021, citing the low quality of the evidence base that PACE had anchored.
+:::
+
 ## Sensitivity: Excluding the PACE Trial {#sec-sensitivity}
 
-::: {.key-finding}
-The PACE trial (chalder2015) contributes the largest individual effect sizes in this review and has been [widely criticised](https://doi.org/10.1186/s12916-019-1296-y) for methodological issues including mid-trial protocol changes, subjective primary outcomes, and the absence of objective improvement criteria.
 The analysis below removes all PACE data to show how the pooled estimates change.
-:::
 
 ```{r}
 #| label: sensitivity-no-pace
@@ -385,7 +399,7 @@ if (has_data && "pem_assessed" %in% names(effects)) {
 
 ## Risk of Bias {#sec-rob}
 
-Risk of bias ratings follow the Cochrane ROB2 tool for RCTs and ROBINS-I for observational studies.
+Risk of bias ratings follow the Cochrane RoB2 tool for RCTs and ROBINS-I for observational studies.
 
 ```{r}
 #| label: rob-summary
@@ -398,6 +412,64 @@ if (nrow(psych_quality) > 0) {
     dplyr::count(judgement)
   names(rob_counts) <- c("Overall RoB", "Studies")
   display_table(rob_counts)
+}
+```
+
+```{r}
+#| label: rob-forest-studies
+#| eval: !expr 'has_forest && nrow(quality) > 0'
+#| results: asis
+forest_studies <- unique(forest_df$study_id)
+forest_rob <- psych_quality[psych_quality$study_id %in% forest_studies, ]
+if (nrow(forest_rob) > 0) {
+  cat("\n**Risk of bias for studies in the forest plot:**\n\n")
+  rob_forest_tbl <- forest_rob |>
+    dplyr::select(study_id, judgement, rob_tool) |>
+    dplyr::arrange(judgement)
+  names(rob_forest_tbl) <- c("Study", "Overall RoB", "Tool")
+  display_table(rob_forest_tbl)
+} else {
+  cat("\nNo quality ratings available for the studies in the forest plot.\n")
+}
+```
+
+## GRADE Evidence Certainty {#sec-grade}
+
+::: {.key-finding}
+GRADE (Grading of Recommendations, Assessment, Development and Evaluation) rates the certainty of evidence across the full body of studies, considering risk of bias, inconsistency, indirectness, imprecision, and publication bias.
+A "very low" rating means the true effect may be substantially different from the estimated effect.
+:::
+
+```{r}
+#| label: grade-cbt
+#| eval: !expr nrow(tar_read(grade)) > 0
+grade_data <- tar_read(grade)
+cbt_grade <- grade_data[grepl("Cbt|Psych|Exercise", grade_data$outcome, ignore.case = TRUE) |
+                        grepl("Cbt|Psych|Exercise", grade_data$comparison %||% "", ignore.case = TRUE), ]
+if (nrow(cbt_grade) > 0) {
+  grade_tbl <- cbt_grade |>
+    dplyr::select(
+      dplyr::any_of(c("outcome", "certainty", "n_studies", "rationale"))
+    ) |>
+    dplyr::arrange(factor(certainty,
+      levels = c("high", "moderate", "low", "very low")))
+  display_table(grade_tbl)
+}
+```
+
+```{r}
+#| label: grade-note
+#| eval: !expr nrow(tar_read(grade)) > 0
+#| results: asis
+if (nrow(cbt_grade) > 0) {
+  n_vlow <- sum(cbt_grade$certainty == "very low", na.rm = TRUE)
+  n_total <- nrow(cbt_grade)
+  if (n_vlow > 0) {
+    cat(sprintf(
+      "\n**%d of %d** outcome domains are rated **very low** certainty — the lowest possible GRADE rating. For these outcomes, the direction and magnitude of the true effect remain highly uncertain.\n",
+      n_vlow, n_total
+    ))
+  }
 }
 ```
 
